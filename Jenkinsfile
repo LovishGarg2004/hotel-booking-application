@@ -72,7 +72,7 @@ pipeline {
                             fi
                         '''
                         
-                        sh 'docker run -d -p 8080:8080 --name $CONTAINER_NAME $IMAGE_NAME:$TAG'
+                        sh 'docker run -d -p 8081:8080 --name $CONTAINER_NAME $IMAGE_NAME:$TAG'
                         
                         // Wait for container to be healthy
                         sh '''
