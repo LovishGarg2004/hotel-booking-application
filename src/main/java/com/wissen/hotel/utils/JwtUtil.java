@@ -31,5 +31,16 @@ public class JwtUtil {
             .setExpiration(new Date(System.currentTimeMillis() + expiration))
             .signWith(key, SignatureAlgorithm.HS512)
             .compact();
-}
+    }
+
+    public String extractEmail(String token) {
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject(); // The email is stored in the "subject" field of the token
+    }
 }

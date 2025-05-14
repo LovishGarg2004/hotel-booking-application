@@ -1,12 +1,11 @@
 -- H2 SQL for Hotel Booking Application (INSERTS ONLY)
 
 INSERT INTO users VALUES
-  ('11111111-1111-1111-1111-111111111111', 'Alice', 'alice@example.com', 'pass123', '1990-01-01', '1234567890', 'ADMIN', CURRENT_TIMESTAMP),
-  ('22222222-2222-2222-2222-222222222222', 'Bob', 'bob@example.com', 'pass456', '1985-05-05', '0987654321', 'CUSTOMER', CURRENT_TIMESTAMP),
-  ('33333333-3333-3333-3333-333333333333', 'Charlie', 'charlie@example.com', 'pass789', '1992-03-15', '1112223333', 'HOTEL_OWNER', CURRENT_TIMESTAMP),
-  ('44444444-4444-4444-4444-444444444444', 'Diana', 'diana@example.com', 'pass321', '1988-07-22', '2223334444', 'CUSTOMER', CURRENT_TIMESTAMP),
-  ('55555555-5555-5555-5555-555555555555', 'Eve', 'eve@example.com', 'pass654', '1995-12-10', '3334445555', 'CUSTOMER', CURRENT_TIMESTAMP);
-
+  ('11111111-1111-1111-1111-111111111111', 'Alice', 'alice@example.com', 'pass123', '1990-01-01', '1234567890', 'ADMIN', CURRENT_TIMESTAMP, false),
+  ('22222222-2222-2222-2222-222222222222', 'Bob', 'bob@example.com', 'pass456', '1985-05-05', '0987654321', 'CUSTOMER', CURRENT_TIMESTAMP, false),
+  ('33333333-3333-3333-3333-333333333333', 'Charlie', 'charlie@example.com', 'pass789', '1992-03-15', '1112223333', 'HOTEL_OWNER', CURRENT_TIMESTAMP, false),
+  ('44444444-4444-4444-4444-444444444444', 'Diana', 'diana@example.com', 'pass321', '1988-07-22', '2223334444', 'CUSTOMER', CURRENT_TIMESTAMP, false),
+  ('55555555-5555-5555-5555-555555555555', 'Eve', 'eve@example.com', 'pass654', '1995-12-10', '3334445555', 'CUSTOMER', CURRENT_TIMESTAMP, false);
 INSERT INTO amenity VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'WiFi', 'Free wireless internet', 'wifi.png'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Pool', 'Swimming pool', 'pool.png'),

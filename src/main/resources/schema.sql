@@ -6,7 +6,9 @@ CREATE TABLE users (
     dob DATE,
     phone VARCHAR(20),
     role VARCHAR(30),
-    created_at TIMESTAMP
+    created_at TIMESTAMP,
+    email_verified BOOLEAN
+
 );
 
 CREATE TABLE amenity (

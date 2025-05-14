@@ -28,7 +28,7 @@ public class PricingRule {
     private PricingRuleType ruleType;
 
     @Lob
-    private String rule_value;
+    private String ruleValue;
     private LocalDate startDate;
     private LocalDate endDate;
 }
