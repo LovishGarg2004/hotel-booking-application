@@ -60,4 +60,5 @@ public class SecurityConfig {
         booking.setStatus(BookingStatus.COMPLETED);
         return booking;
     }
+
 } 
