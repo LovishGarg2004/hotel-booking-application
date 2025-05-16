@@ -31,24 +31,21 @@ jobs:
           source: "build/libs/*.jar"
           target: "~/"
 
-      - name: SSH and restart app
+      - name: SSH and restart app with health check
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
+            echo "Stopping previous app (if running)..."
             pkill -f 'java -jar' || true
+
+            echo "Starting new app..."
             nohup java -jar ~/hotel-booking-application-*.jar > app.log 2>&1 &
 
-      - name: Health check on /test endpoint
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          script: |
             echo "Waiting for app to start..."
-            sleep 15
-            echo "Checking /test endpoint"
-            curl -f http://localhost:8081/test || (echo "❌ Health check failed!" && exit 1)
+            sleep 20
+
+            echo "Performing health check on /test..."
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/test | grep 200 || (echo "❌ Health check failed!" && exit 1)
