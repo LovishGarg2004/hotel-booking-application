@@ -9,6 +9,8 @@ import com.wissen.hotel.utils.JwtUtil;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -72,37 +74,43 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
+        // Generate JWT token
+        logger.info("Generating JWT token for email: {}", request.getEmail());
         String token = jwtUtil.generateToken(user);
+
         logger.info("Login successful for email: {}", request.getEmail());
         return new LoginResponse(token, user.getRole().toString());
     }
 
-            @Override
-        public void verifyEmail(String token) {
-            logger.info("Verifying email with token: {}", token);
-        
-            // Decode the token to extract the email
-            String email = jwtUtil.extractEmail(token);
-            logger.debug("Extracted email from token: {}", email);
-        
-            // Find the user by email
-            User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-        
-            logger.info("User found for email: {}", email);
-        
-            // Check if the email is already verified
-            if (user.isEmailVerified()) {
-                logger.warn("Email is already verified for user: {}", email);
-                throw new EmailAlreadyVerifiedException("Email is already verified.");
-            }
-        
-            // Mark the email as verified
-            user.setEmailVerified(true);
-            userRepository.save(user);
-        
-            logger.info("Email verified successfully for user: {}", email);
+        @Override
+    public void verifyEmail(String token) {
+        logger.info("Verifying email with token: {}", token);
+    
+        // Decode the token to extract the email
+        String email = jwtUtil.extractEmail(token);
+        logger.debug("Extracted email from token: {}", email);
+    
+        // Find the user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+    
+        logger.info("User found for email: {}", email);
+    
+        // Check if the email is already verified
+        if (user.isEmailVerified()) {
+            logger.warn("Email is already verified for user: {}", email);
+            throw new EmailAlreadyVerifiedException("Email is already verified.");
         }
+        
+        //Here add the logic to verify the email
+        //Send a verification email or update the user status in the database
+
+        // Mark the email as verified
+        user.setEmailVerified(true);
+        userRepository.save(user);
+    
+        logger.info("Email verified successfully for user: {}", email);
+    }
 
     @Override
     public void forgotPassword(String email) {
@@ -110,30 +118,30 @@ public class AuthServiceImpl implements AuthService {
         throw new UnsupportedOperationException("Forgot password functionality is no longer supported.");
     }
 
-        @Override
-        public void resetPassword(String token, String newPassword) {
-            logger.info("Resetting password with token: {}", token);
-        
-            // Decode the token to extract the email
-            String email = jwtUtil.extractEmail(token);
-            logger.debug("Extracted email from token: {}", email);
-        
-            // Find the user by email
-            User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-        
-            logger.info("User found for email: {}", email);
-        
-            // Validate the new password (optional, based on your requirements)
-            if (newPassword == null || newPassword.isEmpty()) {
-                logger.error("New password is invalid for email: {}", email);
-                throw new IllegalArgumentException("New password cannot be null or empty");
-            }
-            // Encode the new password and update the user
-            user.setPassword(passwordEncoder.encode(newPassword));
-            userRepository.save(user);
-        
-            logger.info("Password reset successfully for user: {}", email);
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        logger.info("Resetting password with token: {}", token);
+    
+        // Decode the token to extract the email
+        String email = jwtUtil.extractEmail(token);
+        logger.debug("Extracted email from token: {}", email);
+    
+        // Find the user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+    
+        logger.info("User found for email: {}", email);
+    
+        // Validate the new password (optional, based on your requirements)
+        if (newPassword == null || newPassword.isEmpty()) {
+            logger.error("New password is invalid for email: {}", email);
+            throw new IllegalArgumentException("New password cannot be null or empty");
         }
+        // Encode the new password and update the user
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    
+        logger.info("Password reset successfully for user: {}", email);
+    }
 }
 
