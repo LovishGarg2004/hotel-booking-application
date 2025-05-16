@@ -10,7 +10,7 @@ import com.wissen.hotel.models.Booking;
 public class HotelBookingApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(HotelBookingApplication.class, args);
-		System.out.println("Hello World");
+		SpringApplication.run(HotelBookingApplication.class, args); 
+		System.out.println("Hello world");
 	}
 }
