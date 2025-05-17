@@ -150,3 +150,86 @@ pipeline {
         }
     }
 }
+pipeline {
+    agent any
+    
+    environment {
+        // Application configuration
+        DOCKER_IMAGE = 'hotel-booking-app'
+        DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
+        CONTAINER_PORT = '8080'
+        HOST_PORT = '8081'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'chmod +x gradlew'
+                sh './gradlew clean build -x test --no-daemon'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './gradlew test --no-daemon'
+            }
+            post {
+                always {
+                    junit '**/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    sh """
+                        # Stop and remove existing container
+                        if docker ps -a | grep -q ${DOCKER_IMAGE}; then
+                            docker stop ${DOCKER_IMAGE} || true
+                            docker rm ${DOCKER_IMAGE} || true
+                        fi
+
+                        # Run new container
+                        docker run -d \\
+                            --name ${DOCKER_IMAGE} \\
+                            -p ${HOST_PORT}:${CONTAINER_PORT} \\
+                            -e SPRING_PROFILES_ACTIVE=prod \\
+                            --restart unless-stopped \\
+                            ${DOCKER_IMAGE}:${DOCKER_TAG}
+
+                        # Verify container is running
+                        sleep 5
+                        docker ps | grep ${DOCKER_IMAGE}
+                        
+                        echo "Application should be available at: http://\$(hostname -I | awk '{print \$1}'):${HOST_PORT}"
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed! Check the logs for details.'
+        }
+    }
+}
