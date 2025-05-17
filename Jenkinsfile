@@ -6,8 +6,8 @@ pipeline {
         APP_NAME = 'hotel-booking-app'
         DOCKER_IMAGE = "${APP_NAME}"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
-        CONTAINER_PORT = 8080
-        HOST_PORT = 8081
+        CONTAINER_PORT = '8080'
+        HOST_PORT = '8081'
         DOCKER_REGISTRY = '' // Set this if you're using a registry like ECR, GCR, etc.
         
         // Java and Gradle configuration
@@ -89,14 +89,6 @@ pipeline {
                     
                     // Tag as latest
                     sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
-                    
-                    // Push to registry if configured
-                    if (DOCKER_REGISTRY) {
-                        withDockerRegistry([url: DOCKER_REGISTRY]) {
-                            sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                            sh "docker push ${DOCKER_IMAGE}:latest"
-                        }
-                    }
                 }
             }
         }
@@ -104,8 +96,14 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Ensure no container is running on the target port
+                    // Run the new container
                     sh """
+                        # Stop and remove existing container if it exists
+                        if docker ps -a | grep -q ${DOCKER_IMAGE}; then
+                            docker stop ${DOCKER_IMAGE} || true
+                            docker rm ${DOCKER_IMAGE} || true
+                        fi
+                        
                         # Check if port is in use
                         if lsof -i:${HOST_PORT}; then
                             echo "Port ${HOST_PORT} is in use, attempting to free it..."
@@ -122,9 +120,9 @@ pipeline {
                             --name ${DOCKER_IMAGE} \\
                             -p ${HOST_PORT}:${CONTAINER_PORT} \\
                             -e SPRING_PROFILES_ACTIVE=prod \\
-                            -e SPRING_DATASOURCE_URL=\${SPRING_DATASOURCE_URL} \\
-                            -e SPRING_DATASOURCE_USERNAME=\${SPRING_DATASOURCE_USERNAME} \\
-                            -e SPRING_DATASOURCE_PASSWORD=\${SPRING_DATASOURCE_PASSWORD} \\
+                            -e SPRING_DATASOURCE_URL=\\\${SPRING_DATASOURCE_URL} \\
+                            -e SPRING_DATASOURCE_USERNAME=\\\${SPRING_DATASOURCE_USERNAME} \\
+                            -e SPRING_DATASOURCE_PASSWORD=\\\${SPRING_DATASOURCE_PASSWORD} \\
                             --restart unless-stopped \\
                             ${DOCKER_IMAGE}:${DOCKER_TAG}
                         
@@ -132,7 +130,7 @@ pipeline {
                         sleep 10
                         docker ps | grep ${DOCKER_IMAGE}
                         
-                        echo "Application should be available at: http://$(hostname -I | awk '{print $1}'):${HOST_PORT}"
+                        echo "Application should be available at: http://\$(hostname -I | awk '{print \$1}'):${HOST_PORT}"
                     """
                 }
             }
@@ -146,11 +144,9 @@ pipeline {
         }
         success {
             echo '🎉 Pipeline completed successfully!'
-            // You can add notifications here (Slack, Email, etc.)
         }
         failure {
             echo '❌ Pipeline failed! Check the logs for details.'
-            // You can add failure notifications here
         }
     }
 }
