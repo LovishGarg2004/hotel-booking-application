@@ -8,22 +8,13 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         CONTAINER_PORT = '8080'
         HOST_PORT = '8081'
-        DOCKER_REGISTRY = '' // Set this if you're using a registry like ECR, GCR, etc.
-        
-        // Java and Gradle configuration
-        JAVA_HOME = tool 'jdk17'
-        GRADLE_OPTS = '-Dorg.gradle.daemon=false'
     }
     
-    tools {
-        jdk 'jdk17'
-    }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-                sh 'git config --global --add safe.directory $WORKSPACE'
             }
         }
 
