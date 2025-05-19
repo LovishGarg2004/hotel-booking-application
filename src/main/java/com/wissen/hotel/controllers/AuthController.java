@@ -35,6 +35,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    //Jashit
     @GetMapping("/verify/{token}")
     @Operation(summary = "Verify Email", description = "Verify user account via token sent on email")
     public ResponseEntity<Void> verifyEmail(@PathVariable String token) {
@@ -42,6 +43,7 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    //Jashit
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password", description = "Send password reset link to user email")
     public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {

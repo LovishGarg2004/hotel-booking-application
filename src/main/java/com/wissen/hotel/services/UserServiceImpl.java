@@ -1,9 +1,10 @@
-// File: UserServiceImpl.java
 package com.wissen.hotel.services;
 
 import com.wissen.hotel.dtos.*;
 import com.wissen.hotel.models.User;
 import com.wissen.hotel.repositories.UserRepository;
+import com.wissen.hotel.utils.AuthUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -24,13 +25,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getCurrentUser() {
         logger.info("Fetching current user");
-        User user = (User) org.springframework.security.core.context.SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-        if (user == null) {
-            logger.error("Unauthorized access attempt");
-            throw new RuntimeException("Unauthorized");
-        }
+        User user = AuthUtil.getCurrentUser();
         logger.info("Current user fetched successfully: {}", user.getEmail());
         return UserResponse.from(user);
     }
@@ -38,13 +33,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse updateCurrentUser(UpdateUserRequest request) {
         logger.info("Updating current user");
-        User user = (User) org.springframework.security.core.context.SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-        if (user == null) {
-            logger.error("Unauthorized access attempt");
-            throw new RuntimeException("Unauthorized");
-        }
+        User user = AuthUtil.getCurrentUser();
 
         user.setName(request.getName());
         user.setPhone(request.getPhone());
@@ -57,8 +46,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<BookingResponse> getCurrentUserBookings() {
         logger.info("Fetching bookings for current user");
-        // Mock response – integrate with BookingService later
-        return List.of();
+        User user = AuthUtil.getCurrentUser();
+        // Placeholder for booking logic
+        logger.info("Fetched bookings for user: {}", user.getEmail());
+        return List.of(); // Replace with actual booking fetch
     }
 
     @Override
