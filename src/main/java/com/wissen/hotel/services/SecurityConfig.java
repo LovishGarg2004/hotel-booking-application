@@ -47,47 +47,51 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
+        http.csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth
 
-                // Public endpoints
-                .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/h2-console/**", "/test").permitAll()
+        // Public endpoints
+        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/h2-console/**", "/test").permitAll()
 
-                // Public GET hotel endpoints
-                .requestMatchers(HttpMethod.GET,
-                        "/api/hotels",
-                        "/api/hotels/search",
-                        "/api/hotels/top-rated",
-                        "/api/hotels/{id}",
-                        "/api/hotels/{id}/availability",
-                        "/api/hotels/{id}/reviews",
-                        "/api/hotels/{id}/rooms"
-                ).permitAll()
+        // Public GET hotel endpoints
+        .requestMatchers(HttpMethod.GET,
+                "/api/hotels",
+                "/api/hotels/search",
+                "/api/hotels/top-rated",
+                "/api/hotels/{id}",
+                "/api/hotels/{id}/availability",
+                "/api/hotels/{id}/reviews",
+                "/api/hotels/{id}/rooms"
+        ).permitAll()
 
-                // POST hotel - only HOTEL_OWNER or ADMIN
-                .requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN")
+        // Review endpoints
+        .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()                     // Public: View reviews
+        .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()                  // Authenticated: Create review
+        .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()             // Authenticated: Delete review
 
-                // PUT hotel - only HOTEL_OWNER or ADMIN
-                .requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
+        // POST hotel - only HOTEL_OWNER or ADMIN
+        .requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN")
 
-                // DELETE hotel - only HOTEL_OWNER or ADMIN
-                .requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
+        // PUT hotel - only HOTEL_OWNER or ADMIN
+        .requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
 
-                // Approve hotel - only ADMIN
-                .requestMatchers(HttpMethod.PUT, "/api/hotels/{id}/approve").hasRole("ADMIN")
+        // DELETE hotel - only HOTEL_OWNER or ADMIN
+        .requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
 
-                // Hotel owner's own hotels - only HOTEL_OWNER
-                .requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER")
+        // Approve hotel - only ADMIN
+        .requestMatchers(HttpMethod.PUT, "/api/hotels/{id}/approve").hasRole("ADMIN")
 
-                // Admin-only paths
-                .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
+        // Hotel owner's own hotels - only HOTEL_OWNER
+        .requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER")
 
-                // All other requests must be authenticated
-                .anyRequest().authenticated()
-            )
-            .headers(headers -> headers.frameOptions().disable()) // For H2 Console
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        // Admin-only paths
+        .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
+
+        // All other requests must be authenticated
+        .anyRequest().authenticated()
+    )
+        .headers(headers -> headers.frameOptions().disable()) // For H2 Console
+        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
