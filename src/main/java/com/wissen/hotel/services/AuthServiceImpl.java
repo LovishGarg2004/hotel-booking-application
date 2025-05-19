@@ -46,6 +46,10 @@ public class AuthServiceImpl implements AuthService {
             logger.error("Email already in use: {}", request.getEmail());
             throw new EmailAlreadyInUseException("Email already in use");
         }
+        if (userRepository.findByPhone(request.getPhone()).isPresent()) {
+            logger.error("Phone number already in use: {}", request.getPhone());
+            throw new PhoneAlreadyInUseException("Phone number already in use");
+        }
 
         User user = new User();
         user.setName(request.getName());
@@ -82,7 +86,7 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(token, user.getRole().toString());
     }
 
-        @Override
+    @Override
     public void verifyEmail(String token) {
         logger.info("Verifying email with token: {}", token);
     
