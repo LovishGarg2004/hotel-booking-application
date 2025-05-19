@@ -67,7 +67,7 @@ public class HotelServiceImpl implements HotelService {
             hotel.setState(request.getState());
             hotel.setCountry(request.getCountry());
             hotel.setLatitude(request.getLatitude());
-                hotel.setLongitude(request.getLongitude());
+            hotel.setLongitude(request.getLongitude());
 
         return mapToResponse(hotelRepository.save(hotel));
     }
