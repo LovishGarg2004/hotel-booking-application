@@ -5,7 +5,11 @@ import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.repositories.HotelRepository;
+import com.wissen.hotel.utils.AuthUtil;
+
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,27 +21,37 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
 
+    private static final Logger logger = LoggerFactory.getLogger(HotelServiceImpl.class);
     private final HotelRepository hotelRepository;
+    private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
     public List<HotelResponse> getAllHotels(String city, int page, int size) {
-        return hotelRepository.findAll().stream()
+        logger.info("Fetching all hotels. City: {}, Page: {}, Size: {}", city, page, size);
+        List<HotelResponse> hotels = hotelRepository.findAll().stream()
                 .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
-                .skip(page * size)
+                .skip((long) page * size)
                 .limit(size)
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
+        logger.debug("Found {} hotels", hotels.size());
+        return hotels;
     }
 
     @Override
     public HotelResponse getHotelById(UUID id) {
+        logger.info("Fetching hotel by ID: {}", id);
         return hotelRepository.findById(id)
                 .map(this::mapToResponse)
-                .orElseThrow(() -> new RuntimeException("Hotel not found"));
+                .orElseThrow(() -> {
+                    logger.warn("Hotel not found for ID: {}", id);
+                    return new RuntimeException(HOTEL_NOT_FOUND);
+                });
     }
 
     @Override
     public HotelResponse createHotel(CreateHotelRequest request) {
+        logger.info("Creating hotel: {}", request.getName());
         Hotel hotel = Hotel.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -49,41 +63,56 @@ public class HotelServiceImpl implements HotelService {
                 .longitude(request.getLongitude())
                 .createdAt(LocalDateTime.now())
                 .isApproved(false)
-                // .owner(currentUser) // If current user logic available
+                .owner(AuthUtil.getCurrentUser()) // If current user logic available
                 .build();
-        return mapToResponse(hotelRepository.save(hotel));
+        Hotel saved = hotelRepository.save(hotel);
+        logger.debug("Hotel created with ID: {}", saved.getHotelId());
+        return mapToResponse(saved);
     }
 
 
     @Override
     public HotelResponse updateHotel(UUID id, UpdateHotelRequest request) {
+        logger.info("Updating hotel ID: {}", id);
         Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hotel not found"));
+                .orElseThrow(() -> {
+                    logger.warn("Hotel not found for update, ID: {}", id);
+                    return new RuntimeException(HOTEL_NOT_FOUND);
+                });
 
-            hotel.setName(request.getName());
-            hotel.setAddress(request.getAddress());
-            hotel.setDescription(request.getDescription());
-            hotel.setCity(request.getCity());
-            hotel.setState(request.getState());
-            hotel.setCountry(request.getCountry());
-            hotel.setLatitude(request.getLatitude());
-                hotel.setLongitude(request.getLongitude());
-
-        return mapToResponse(hotelRepository.save(hotel));
+        hotel.setName(request.getName());
+        hotel.setAddress(request.getAddress());
+        hotel.setDescription(request.getDescription());
+        hotel.setCity(request.getCity());
+        hotel.setState(request.getState());
+        hotel.setCountry(request.getCountry());
+        hotel.setLatitude(request.getLatitude());
+        hotel.setLongitude(request.getLongitude());
+        Hotel updated = hotelRepository.save(hotel);
+        logger.debug("Hotel updated: {}", updated.getHotelId());
+        return mapToResponse(updated);
     }
 
     @Override
     public void deleteHotel(UUID id) {
+        logger.info("Deleting hotel ID: {}", id);
         hotelRepository.deleteById(id);
+        logger.debug("Hotel deleted: {}", id);
     }
 
     @Override
     public HotelResponse approveHotel(UUID id) {
+        logger.info("Approving hotel ID: {}", id);
         Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hotel not found"));
+                .orElseThrow(() -> {
+                    logger.warn("Hotel not found for approval, ID: {}", id);
+                    return new RuntimeException(HOTEL_NOT_FOUND);
+                });
 
         hotel.setApproved(true);
-        return mapToResponse(hotelRepository.save(hotel));
+        Hotel approved = hotelRepository.save(hotel);
+        logger.debug("Hotel approved: {}", approved.getHotelId());
+        return mapToResponse(approved);
     }
 
     private HotelResponse mapToResponse(Hotel hotel) {
@@ -99,7 +128,7 @@ public class HotelServiceImpl implements HotelService {
                 .longitude(hotel.getLongitude())
                 .isApproved(hotel.isApproved())
                 .createdAt(hotel.getCreatedAt())
-                .ownerId(hotel.getOwner() != null ? hotel.getOwner().getUserId() : null)
+                .ownerId(hotel.getOwner().getUserId())
                 .build();
     }
 
@@ -109,10 +138,10 @@ public class HotelServiceImpl implements HotelService {
                 .filter(h -> (keyword == null || h.getName().toLowerCase().contains(keyword.toLowerCase()) ||
                             h.getDescription().toLowerCase().contains(keyword.toLowerCase())) &&
                             (city == null || h.getCity().equalsIgnoreCase(city)))
-                .skip(page * size)
+                .skip((long) page * size)
                 .limit(size)
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -121,7 +150,7 @@ public class HotelServiceImpl implements HotelService {
         return hotelRepository.findAll().stream()
                 .limit(10) // temporary, you can sort by rating when added
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -134,7 +163,7 @@ public class HotelServiceImpl implements HotelService {
                     return dist <= radiusKm;
                 })
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -162,7 +191,7 @@ public class HotelServiceImpl implements HotelService {
         return hotelRepository.findAll().stream()
                 .filter(hotel -> hotel.getOwner() != null && hotel.getOwner().getUserId().equals(dummyUserId))
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // Helper to calculate distance (Haversine)
