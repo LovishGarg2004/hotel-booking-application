@@ -75,6 +75,7 @@ public class HotelServiceImpl implements HotelService {
     public HotelResponse updateHotel(UUID id, UpdateHotelRequest request) {
         logger.info("Updating hotel ID: {}", id);
         Hotel hotel = hotelRepository.findById(id)
+
                 .orElseThrow(() -> {
                     logger.warn("Hotel not found for update, ID: {}", id);
                     return new RuntimeException(HOTEL_NOT_FOUND);

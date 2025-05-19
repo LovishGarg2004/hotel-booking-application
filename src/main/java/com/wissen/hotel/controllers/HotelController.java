@@ -2,8 +2,11 @@ package com.wissen.hotel.controllers;
 
 import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
+import com.wissen.hotel.dtos.ReviewResponse;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.services.HotelService;
+import com.wissen.hotel.services.ReviewService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +20,7 @@ import java.util.UUID;
 public class HotelController {
 
     private final HotelService hotelService;
+    private final ReviewService reviewService;
 
     @GetMapping
     public ResponseEntity<List<HotelResponse>> getAllHotels(
@@ -80,8 +84,9 @@ public class HotelController {
     }
 
     @GetMapping("/{id}/reviews")
-    public ResponseEntity<?> getHotelReviews(@PathVariable UUID id) {
-        return ResponseEntity.ok(hotelService.getHotelReviews(id));
+    public ResponseEntity<List<ReviewResponse>> getReviewsByHotel(@PathVariable UUID hotelId) {
+        List<ReviewResponse> reviews = reviewService.getReviewsByHotel(hotelId);
+        return ResponseEntity.ok(reviews);
     }
 
     @GetMapping("/{id}/availability")
