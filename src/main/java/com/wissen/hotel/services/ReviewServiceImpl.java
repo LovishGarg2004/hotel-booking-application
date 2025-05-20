@@ -9,7 +9,13 @@ import com.wissen.hotel.models.User;
 import com.wissen.hotel.repositories.HotelRepository;
 import com.wissen.hotel.repositories.ReviewRepository;
 import com.wissen.hotel.repositories.UserRepository;
+import com.wissen.hotel.utils.AuthUtil;
+
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,47 +27,73 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReviewServiceImpl implements ReviewService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReviewServiceImpl.class);
+
     private final ReviewRepository reviewRepository;
     private final HotelRepository hotelRepository;
-    private final UserRepository userRepository;
 
     @Override
     public ReviewResponse createReview(CreateReviewRequest request) {
-        // UUID userId = AuthUtils.getCurrentUserId(); // Replace with proper authentication
-        // User user = userRepository.findById(userId)
-        //         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        logger.info("Creating review for hotelId: {} by user: {}", request.getHotelId(), AuthUtil.getCurrentUser() != null ? AuthUtil.getCurrentUser().getUserId() : null);
+        User user = AuthUtil.getCurrentUser(); // Replace with proper authentication
 
-        // Hotel hotel = hotelRepository.findById(request.getHotelId())
-        //         .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
+        Hotel hotel = hotelRepository.findById(request.getHotelId())
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
 
         Review review = Review.builder()
-                //.user(user)
-                //.hotel(hotel)
+                .user(user)
+                .hotel(hotel)
                 .rating(request.getRating())
                 .comment(request.getComment())
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return mapToResponse(reviewRepository.save(review));
+        Review saved = reviewRepository.save(review);
+        logger.debug("Review created with ID: {}", saved.getReviewId());
+        return mapToResponse(saved);
     }
 
     @Override
     public ReviewResponse getReviewById(UUID reviewId) {
+        logger.info("Fetching review by ID: {}", reviewId);
         Review review = reviewRepository.findById(reviewId)
             .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
+        logger.debug("Review found: {}", review.getReviewId());
         return mapToResponse(review);
     }
 
     @Override
     public List<ReviewResponse> getReviewsByHotel(UUID hotelId) {
+        logger.info("Fetching reviews for hotelId: {}", hotelId);
         List<Review> reviews = reviewRepository.findByHotel_HotelId(hotelId);
+        logger.debug("Found {} reviews for hotelId: {}", reviews.size(), hotelId);
         return reviews.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Override
     public void deleteReview(UUID reviewId) {
+        logger.info("Deleting review with ID: {}", reviewId);
+
+        // Fetch review using existing method
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
+
+        // Get authenticated user using AuthUtil
+        User currentUser = AuthUtil.getCurrentUser();
+
+        // Check if user is admin
+        boolean isAdmin = currentUser.getRole().getAuthorities().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equalsIgnoreCase(role.toString()));
+
+        // Check permission: only review owner or admin can delete
+        if (!review.getUser().getUserId().equals(currentUser.getUserId()) && !isAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("You are not authorized to delete this review.");
+        }
+
         reviewRepository.deleteById(reviewId);
+        logger.debug("Review deleted: {}", reviewId);
     }
+
 
     private ReviewResponse mapToResponse(Review review) {
         return ReviewResponse.builder()
