@@ -53,21 +53,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(auth -> auth
 
-<<<<<<< HEAD
     // Public endpoints
     .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/h2-console/**", "/test").permitAll()
-=======
-        // Public endpoints
-        .requestMatchers(
-            "/api/auth/**", 
-            "/v3/api-docs/**", 
-            "/swagger-ui/**", 
-            "/swagger-ui.html", 
-            "/h2-console/**", 
-            "/test",
-            "/api/test-email/**"  // Allow both GET and POST to test email endpoint
-        ).permitAll()
->>>>>>> bc76f7df35240a81d345a972494daa95d8865033
 
     // Public GET hotel and room endpoints
     .requestMatchers(HttpMethod.GET,
