@@ -35,6 +35,10 @@ public class RoomServiceImpl implements RoomService {
         Hotel hotel = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
 
+        if (!hotel.isApproved()) {
+            throw new IllegalStateException("Cannot create room in an unapproved hotel.");
+        }
+
         Room room = Room.builder()
                 .hotel(hotel)
                 .roomType(request.getRoomType())
@@ -61,6 +65,10 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
+        if (!room.getHotel().isApproved()) {
+            throw new IllegalStateException("Cannot update room of an unapproved hotel.");
+        }
+
         room.setRoomType(request.getRoomType());
         room.setCapacity(request.getCapacity());
         room.setBasePrice(request.getBasePrice());
@@ -74,6 +82,11 @@ public class RoomServiceImpl implements RoomService {
         log.info("Deleting room {}", roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+
+        if (!room.getHotel().isApproved()) {
+            throw new IllegalStateException("Cannot delete room of an unapproved hotel.");
+        }
+
         roomRepository.delete(room);
     }
 
@@ -84,7 +97,7 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         long bookedRooms = bookingRepository.findByRoom_RoomId(roomId).stream()
-                .filter(b -> !(b.getCheckOut().isBefore(checkIn) || b.getCheckIn().isAfter(checkOut))) // Ensure 'b' is of type Booking
+                .filter(b -> !(b.getCheckOut().isBefore(checkIn) || b.getCheckIn().isAfter(checkOut)))
                 .count();
 
         return bookedRooms < room.getTotalRooms();
@@ -96,8 +109,13 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
+        if (!room.getHotel().isApproved()) {
+            throw new IllegalStateException("Cannot update amenities of a room in an unapproved hotel.");
+        }
+
         room.getRoomAmenities().clear();
-                List<RoomAmenity> updatedAmenities = amenities.stream()
+
+        List<RoomAmenity> updatedAmenities = amenities.stream()
                 .map(amenityName -> {
                     Amenity amenity = amenityRepository.findByName(amenityName);
                     if (amenity == null) {
@@ -105,7 +123,7 @@ public class RoomServiceImpl implements RoomService {
                     }
                     return RoomAmenity.builder()
                             .room(room)
-                            .amenity(amenity) // Associate with Amenity
+                            .amenity(amenity)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -116,14 +134,13 @@ public class RoomServiceImpl implements RoomService {
         return mapToResponse(roomRepository.save(room));
     }
 
-        @Override
-        public List<String> getAllRoomTypes() {
+    @Override
+    public List<String> getAllRoomTypes() {
         log.info("Fetching all room types");
         return Arrays.stream(RoomType.values())
-                        .map(Enum::name)
-                        .collect(Collectors.toList());
-        }
-
+                .map(Enum::name)
+                .collect(Collectors.toList());
+    }
 
     // ------------------ Helper ------------------
     private RoomResponse mapToResponse(Room room) {
