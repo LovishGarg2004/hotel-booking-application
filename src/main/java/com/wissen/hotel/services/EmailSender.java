@@ -21,7 +21,7 @@ public class EmailSender {
 
     public void sendVerificationEmail(String to, String token) {
         try {
-            String link = "http://localhost:8081/api/auth/verify?token=" + token;
+            String link = "http://localhost:8081/api/auth/verify/" + token;
             
             logger.info("Sending verification email to: {}", to);
             
