@@ -67,6 +67,7 @@ public class RoomController {
     }
 
     // Update amenities
+    //TODO: After implementing the amenity service, this endpoint will be used to update the amenities of a room
     @PutMapping("/{id}/amenities")
     public ResponseEntity<RoomResponse> updateAmenities(
             @PathVariable UUID id,
