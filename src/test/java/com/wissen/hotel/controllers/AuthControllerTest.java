@@ -1,94 +1,108 @@
 package com.wissen.hotel.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wissen.hotel.dtos.*;
+import com.wissen.hotel.enums.UserRole;
 import com.wissen.hotel.services.AuthService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.LocalDate;
+
+@WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false) // Disable security filters for testing
 class AuthControllerTest {
 
-    @Mock
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
     private AuthService authService;
 
-    @InjectMocks
-    private AuthController authController;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
-    void testRegister() {
+    void testRegister() throws Exception {
         RegisterRequest request = new RegisterRequest();
-        // Set up request fields as needed
+        request.setEmail("saloni@gmail.com");
+        request.setPassword("Password123");
+        request.setName("Saloni Gupta");
+        request.setPhone("1234567890");
+        request.setRole(UserRole.ADMIN);
+        request.setDob(LocalDate.of(2004, 10, 19));
 
-        doNothing().when(authService).register(request);
+        doNothing().when(authService).register(any(RegisterRequest.class));
 
-        ResponseEntity<Void> response = authController.register(request);
-
-        assertEquals(200, response.getStatusCodeValue());
-        verify(authService, times(1)).register(request);
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void testLogin() {
+    void testLogin() throws Exception {
         LoginRequest request = new LoginRequest();
-        // Set up request fields as needed
-        LoginResponse mockResponse = new LoginResponse();
+        request.setEmail("saloni@gmail.com");
+        request.setPassword("Password123");
 
-        when(authService.login(request)).thenReturn(mockResponse);
+        LoginResponse response = new LoginResponse();
+        response.setToken("sample-token");
 
-        ResponseEntity<LoginResponse> response = authController.login(request);
+        when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
-        assertEquals(200, response.getStatusCodeValue());
-        assertEquals(mockResponse, response.getBody());
-        verify(authService, times(1)).login(request);
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("sample-token"));
     }
 
     @Test
-    void testVerifyEmail() {
-        String token = "sampleToken";
+    void testVerifyEmail() throws Exception {
+        String token = "dummy-token";
 
         doNothing().when(authService).verifyEmail(token);
 
-        ResponseEntity<Void> response = authController.verifyEmail(token);
-
-        assertEquals(200, response.getStatusCodeValue());
-        verify(authService, times(1)).verifyEmail(token);
+        mockMvc.perform(get("/api/auth/verify/" + token))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void testForgotPassword() {
+    void testForgotPassword() throws Exception {
         ForgotPasswordRequest request = new ForgotPasswordRequest();
-        request.setEmail("test@example.com");
+        request.setEmail("saloni@gmail.com");
 
         doNothing().when(authService).forgotPassword(request.getEmail());
 
-        ResponseEntity<Void> response = authController.forgotPassword(request);
-
-        assertEquals(200, response.getStatusCodeValue());
-        verify(authService, times(1)).forgotPassword(request.getEmail());
+        mockMvc.perform(post("/api/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void testResetPassword() {
+    void testResetPassword() throws Exception {
         ResetPasswordRequest request = new ResetPasswordRequest();
-        request.setToken("sampleToken");
-        request.setNewPassword("newPassword");
+        request.setToken("reset-token");
+        request.setNewPassword("NewPassword123");
 
         doNothing().when(authService).resetPassword(request.getToken(), request.getNewPassword());
 
-        ResponseEntity<Void> response = authController.resetPassword(request);
-
-        assertEquals(200, response.getStatusCodeValue());
-        verify(authService, times(1)).resetPassword(request.getToken(), request.getNewPassword());
+        mockMvc.perform(post("/api/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 }
