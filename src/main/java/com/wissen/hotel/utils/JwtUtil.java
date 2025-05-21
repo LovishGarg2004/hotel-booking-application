@@ -53,4 +53,19 @@ public class JwtUtil {
             return false;
         }
     }
+
+    public String generateEmailVerificationToken(String email) {
+        // Create token valid for, e.g., 24 hours
+        long expirationMillis = 24 * 60 * 60 * 1000; // 24 hours
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMillis);
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(SignatureAlgorithm.HS512, key) // Use HS256 or HS512
+                .compact();
+    }
 }

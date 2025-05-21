@@ -6,7 +6,7 @@ import com.wissen.hotel.enums.UserRole;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.exceptions.*;
 import com.wissen.hotel.utils.JwtUtil;
-
+import com.wissen.hotel.services.EmailSender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,17 +26,19 @@ public class AuthServiceImpl implements AuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
-    
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailSender emailSender;
+
 
     @Value("${app.reset-password-url}")
     private String resetPasswordUrl;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailSender emailSender) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.emailSender = emailSender;
     }
 
     @Override
@@ -60,6 +62,9 @@ public class AuthServiceImpl implements AuthService {
         user.setDob(request.getDob());
         user.setCreatedAt(LocalDateTime.now());
         user.setEmailVerified(false);
+
+        String token = jwtUtil.generateEmailVerificationToken(user.getEmail());
+        emailSender.sendVerificationEmail(user.getEmail(), token);
         userRepository.save(user);
         logger.info("User registered successfully with email: {}", request.getEmail());
     }
@@ -105,10 +110,12 @@ public class AuthServiceImpl implements AuthService {
             logger.warn("Email is already verified for user: {}", email);
             throw new EmailAlreadyVerifiedException("Email is already verified.");
         }
-        
         //Here add the logic to verify the email
-        //Send a verification email or update the user status in the database
+        // emailSender.sendVerificationEmail(email, token);
 
+
+        //Send a verification email or update the user status in the database
+            
         // Mark the email as verified
         user.setEmailVerified(true);
         userRepository.save(user);
