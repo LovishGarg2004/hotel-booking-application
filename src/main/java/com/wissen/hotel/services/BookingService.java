@@ -9,6 +9,7 @@ public interface BookingService {
     BookingResponse createBooking(CreateBookingRequest request);
     BookingResponse getBookingById(UUID bookingId);
     BookingResponse updateBooking(UUID bookingId, UpdateBookingRequest request);
+    BookingResponse approveBooking(UUID bookingId);
     BookingResponse cancelBooking(UUID bookingId);
     List<BookingResponse> getAllBookings(String filter); // Admin only
     List<BookingResponse> getBookingsForHotel(UUID hotelId);
