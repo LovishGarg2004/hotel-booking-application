@@ -1,9 +1,13 @@
 package com.wissen.hotel.services;
 
 import com.wissen.hotel.dtos.*;
+import com.wissen.hotel.models.Booking;
 import com.wissen.hotel.models.User;
+import com.wissen.hotel.repositories.BookingRepository;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.utils.AuthUtil;
+
+import jakarta.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +25,8 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private BookingRepository bookingRepository;
 
     @Override
     public UserResponse getCurrentUser() {
@@ -44,12 +50,23 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public List<BookingResponse> getCurrentUserBookings() {
         logger.info("Fetching bookings for current user");
-        User user = AuthUtil.getCurrentUser();
-        // Placeholder for booking logic
-        logger.info("Fetched bookings for user: {}", user.getEmail());
-        return List.of(); // Replace with actual booking fetch
+
+        // Step 1: Get the current authenticated user
+        User currentUser = AuthUtil.getCurrentUser();
+
+        // Step 2: Fetch all bookings made by the user
+        List<Booking> bookings = bookingRepository.findAllByUser_UserId(currentUser.getUserId());
+
+        // Step 3: Map to DTOs
+        List<BookingResponse> responses = bookings.stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+
+        logger.info("Fetched {} bookings for user: {}", responses.size(), currentUser.getEmail());
+        return responses;
     }
 
     @Override
@@ -93,5 +110,19 @@ public class UserServiceImpl implements UserService {
         logger.info("Deleting user with ID: {}", id);
         userRepository.deleteById(UUID.fromString(id));
         logger.info("User deleted successfully with ID: {}", id);
+    }
+
+    private BookingResponse mapToResponse(Booking booking) {
+        return BookingResponse.builder()
+                .bookingId(booking.getBookingId())
+                .userId(booking.getUser().getUserId())
+                .roomId(booking.getRoom().getRoomId())
+                .checkIn(booking.getCheckIn())
+                .checkOut(booking.getCheckOut())
+                .guests(booking.getGuests())
+                .finalPrice(booking.getFinalPrice())
+                .status(booking.getStatus())
+                .createdAt(booking.getCreatedAt())
+                .build();
     }
 }

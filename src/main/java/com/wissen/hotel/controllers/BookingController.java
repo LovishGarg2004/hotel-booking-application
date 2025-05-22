@@ -32,6 +32,11 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.updateBooking(id, request));
     }
 
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<BookingResponse> approveBooking(@PathVariable UUID id) {
+        return ResponseEntity.ok(bookingService.approveBooking(id));
+}
+
     @PutMapping("/{id}/cancel")
     public ResponseEntity<BookingResponse> cancelBooking(@PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.cancelBooking(id));

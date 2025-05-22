@@ -9,5 +9,7 @@ import java.util.UUID;
 
 public interface RoomAvailabilityRepository extends JpaRepository<RoomAvailability, UUID> {
 
+    RoomAvailability findByRoom_RoomIdAndDate(UUID roomId, LocalDate date);
+
  
 }

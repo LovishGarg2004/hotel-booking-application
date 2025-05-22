@@ -26,6 +26,7 @@ public class Hotel {
     private String name;
 
     @Lob
+    @Column(name = "description", length = 10000)
     private String description;
 
     @Lob
