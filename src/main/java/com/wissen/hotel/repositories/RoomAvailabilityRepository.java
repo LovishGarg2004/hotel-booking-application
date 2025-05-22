@@ -8,6 +8,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface RoomAvailabilityRepository extends JpaRepository<RoomAvailability, UUID> {
-
  
 }

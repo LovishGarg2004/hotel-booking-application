@@ -51,7 +51,6 @@ public class RoomController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable UUID id) {
         log.info("Deleting room: {}", id);
-        // TODO: Authenticate hotel owner or admin
         roomService.deleteRoom(id);
         return ResponseEntity.noContent().build();
     }
@@ -74,7 +73,6 @@ public class RoomController {
             @RequestBody List<String> amenities
     ) {
         log.info("Updating amenities for room: {}", id);
-        // TODO: Authenticate hotel owner or admin
         return ResponseEntity.ok(roomService.updateRoomAmenities(id, amenities));
     }
 
