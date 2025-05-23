@@ -46,21 +46,21 @@ public class UserController {
 
     @Operation(summary = "Get user by ID", description = "Fetches details of a user by their UUID (Admin only)")
     @GetMapping("/admin/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(userService.getUserById(id.toString()));
     }
 
     @Operation(summary = "Get all users", description = "Returns a paginated list of all users (Admin only)")
     @GetMapping("/admin/usersall")
     public ResponseEntity<List<UserResponse>> getAllUsers(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
+        @RequestParam(name = "page" , defaultValue = "0") int page,
+        @RequestParam(name = "size" , defaultValue = "10") int size) {
         return ResponseEntity.ok(userService.getAllUsers(page, size));
     }
 
     @Operation(summary = "Update user role", description = "Updates the role of a user by their ID (Admin only)")
     @PutMapping("/admin/{id}/role")
-    public ResponseEntity<Void> updateUserRole(@PathVariable UUID id, @RequestParam String role) {
+    public ResponseEntity<Void> updateUserRole(@PathVariable("id") UUID id, @RequestParam(name = "role") String role) {
         UserRole userRole;
         switch (role.toUpperCase()) {
             case "ADMIN":
@@ -81,7 +81,7 @@ public class UserController {
 
     @Operation(summary = "Delete user", description = "Deletes a user by ID (Admin only)")
     @DeleteMapping("/admin/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") UUID id) {
         userService.deleteUser(id.toString());
         return ResponseEntity.noContent().build();
     }

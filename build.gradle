@@ -101,5 +101,16 @@ tasks.named('test') {
         }
     }
 }
+sonar {
+  properties {
+    property "sonar.projectKey", "hotel-booking-application"
+    property "sonar.organization", "lovishgarg2004"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-parameters"
+}
 
 
