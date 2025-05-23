@@ -3,6 +3,7 @@ package com.wissen.hotel.models;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
+import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,4 +40,7 @@ public class Hotel {
     private BigDecimal longitude;
     private LocalDateTime createdAt;
     private boolean isApproved;
+    
+    @Builder.Default
+    private boolean featured = false;
 }

@@ -25,25 +25,11 @@ repositories {
     mavenCentral()
 }
 
-
 ext {
     set('springCloudVersion', "2023.0.0")
 }
+
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	// runtimeOnly 'com.h2database:h2'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.mockito:mockito-core'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-	//JACKsON
-	implementation platform("com.fasterxml.jackson:jackson-bom:2.15.2")
-
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -73,12 +59,13 @@ dependencies {
     // JSON Processing
     implementation platform('com.fasterxml.jackson:jackson-bom:2.15.2')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     
     // OpenAPI Documentation
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    
+    // Cloudinary
+    implementation 'com.cloudinary:cloudinary-http44:1.37.0'
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -94,21 +81,26 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
-}
+    jacoco {
+        toolVersion = "0.8.8"
+    }
 
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
 
-jacoco {
-    toolVersion = "0.8.8"
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
+    sonar {
+        properties {
+            property "sonar.projectKey", "hotel-booking-application"
+            property "sonar.organization", "lovishgarg2004"
+            property "sonar.host.url", "https://sonarcloud.io"
+        }
     }
 }
-
 sonar {
   properties {
     property "sonar.projectKey", "hotel-booking-application"
@@ -120,4 +112,5 @@ sonar {
 tasks.withType(JavaCompile) {
     options.compilerArgs << "-parameters"
 }
+
 

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@CrossOrigin("http://localhost:8080")
 @RequestMapping("/api/hotels")
 @RequiredArgsConstructor
 public class HotelController {
@@ -24,9 +25,11 @@ public class HotelController {
 
     @GetMapping
     public ResponseEntity<List<HotelResponse>> getAllHotels(
+
             @RequestParam(name = "city", required = false) String city,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
+
         return ResponseEntity.ok(hotelService.getAllHotels(city, page, size));
     }
 

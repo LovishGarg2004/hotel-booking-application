@@ -67,28 +67,52 @@ public class AuthServiceImpl implements AuthService {
         emailSender.sendVerificationEmail(user.getEmail(), token);
         userRepository.save(user);
         logger.info("User registered successfully with email: {}", request.getEmail());
+        
+        // Send welcome email if the user is a hotel owner
+        if (user.getRole() == UserRole.HOTEL_OWNER) {
+            try {
+                emailSender.sendWelcomeEmail(user.getEmail(), user.getName());
+                logger.info("Welcome email sent to hotel owner: {}", user.getEmail());
+            } catch (Exception e) {
+                logger.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage(), e);
+                // Continue with registration even if welcome email fails
+            }
+        }
     }
 
     @Override
     public LoginResponse login(LoginRequest request) {
         logger.info("Attempting login for email: {}", request.getEmail());
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> {
-                    logger.error("Invalid email or password for email: {}", request.getEmail());
-                    return new InvalidCredentialsException("Invalid email or password");
-                });
+        try {
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> {
+                        logger.error("User not found with email: {}", request.getEmail());
+                        return new InvalidCredentialsException("Invalid email or password");
+                    });
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            logger.error("Invalid password for email: {}", request.getEmail());
-            throw new InvalidCredentialsException("Invalid email or password");
+            logger.debug("User found: {}", user.getEmail());
+
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                logger.error("Invalid password for email: {}", request.getEmail());
+                throw new InvalidCredentialsException("Invalid email or password");
+            }
+
+            // if (!user.isEmailVerified()) {
+            //     logger.warn("Login attempt with unverified email: {}", request.getEmail());
+            //     throw new EmailNotVerifiedException("Please verify your email before logging in");
+            // }
+
+            // Generate JWT token
+            logger.info("Generating JWT token for email: {}", request.getEmail());
+            String token = jwtUtil.generateToken(user);
+
+            logger.info("Login successful for email: {}", request.getEmail());
+            return new LoginResponse(token, user.getRole().toString());
+            
+        } catch (Exception e) {
+            logger.error("Error during login for email {}: {}", request.getEmail(), e.getMessage(), e);
+            throw e; // Re-throw the exception to be handled by the global exception handler
         }
-
-        // Generate JWT token
-        logger.info("Generating JWT token for email: {}", request.getEmail());
-        String token = jwtUtil.generateToken(user);
-
-        logger.info("Login successful for email: {}", request.getEmail());
-        return new LoginResponse(token, user.getRole().toString());
     }
 
     @Override
