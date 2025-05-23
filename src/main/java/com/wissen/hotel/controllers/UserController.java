@@ -2,6 +2,7 @@ package com.wissen.hotel.controllers;
 
 import com.wissen.hotel.dtos.UserResponse;
 import com.wissen.hotel.enums.UserRole;
+import com.wissen.hotel.dtos.BookingResponse;
 import com.wissen.hotel.dtos.UpdateUserRequest;
 import com.wissen.hotel.services.UserService;
 import com.wissen.hotel.dtos.UpdateUserRoleRequest;
@@ -39,9 +40,9 @@ public class UserController {
 
     @Operation(summary = "Get current user's bookings", description = "Returns a list of bookings made by the current user")
     @GetMapping("/me/bookings")
-    public ResponseEntity<List<?>> getCurrentUserBookings() {
+    public ResponseEntity<List<BookingResponse>> getCurrentUserBookings() {
         return ResponseEntity.ok(userService.getCurrentUserBookings());
-    }
+}
 
     @Operation(summary = "Get user by ID", description = "Fetches details of a user by their UUID (Admin only)")
     @GetMapping("/admin/{id}")

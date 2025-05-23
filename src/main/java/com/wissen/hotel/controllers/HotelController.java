@@ -29,9 +29,9 @@ public class HotelController {
             @RequestParam(required = false) Boolean featured,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        if (featured != null && featured) {
-            return ResponseEntity.ok(hotelService.getFeaturedHotels());
-        }
+        // if (featured != null && featured) {
+        //     return ResponseEntity.ok(hotelService.getFeaturedHotels());
+        // }
         return ResponseEntity.ok(hotelService.getAllHotels(city, page, size));
     }
 

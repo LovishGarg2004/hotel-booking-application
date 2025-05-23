@@ -72,9 +72,9 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .authorizeHttpRequests(auth -> {
-                // Public endpoints
-                auth.requestMatchers(
+                .authorizeHttpRequests(auth -> {
+                            // Public endpoints
+                            auth.requestMatchers(
                     "/api/auth/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
@@ -88,20 +88,26 @@ public class SecurityConfig {
                 auth.requestMatchers("/api/rooms/*/images").permitAll();
 
                 // Public GET hotel and room endpoints
-                auth.requestMatchers(HttpMethod.GET, 
+                auth.requestMatchers(HttpMethod.GET,
                     "/api/hotels",
                     "/api/hotels/search",
                     "/api/hotels/top-rated",
+                    "/api/hotels/{id}",
+                    "/api/hotels/{id}/availability",
+                    "/api/hotels/{id}/reviews",
+                    "/api/hotels/{id}/rooms",
+                    "/api/rooms/{id}",
+                    "/api/rooms/{id}/availability",
                     "/api/rooms/types"
                 ).permitAll();
-                
-                // Dynamic path patterns
-                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*").permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/availability").permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/reviews").permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/rooms").permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*").permitAll();
-                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*/availability").permitAll();
+
+                //User Endpoints
+                auth.requestMatchers(HttpMethod.GET, "/api/users/me/bookings").authenticated();
+
+                // Room management
+                auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
                 // Review endpoints
                 auth.requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll();
@@ -146,10 +152,10 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user = User.builder()
-                .username(username)
-                .password(passwordEncoder().encode(password))
-                .roles("ADMIN")
-                .build();
+            .username(username)
+            .password(passwordEncoder().encode(password))
+            .roles("ADMIN")
+            .build();
 
         return new InMemoryUserDetailsManager(user);
     }

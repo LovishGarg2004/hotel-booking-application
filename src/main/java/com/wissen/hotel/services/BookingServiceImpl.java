@@ -53,7 +53,7 @@ public class BookingServiceImpl implements BookingService {
                 .checkIn(request.getCheckIn())
                 .checkOut(request.getCheckOut())
                 .guests(request.getGuests())
-                .status(BookingStatus.BOOKED)
+                .status(BookingStatus.PENDING)
                 .finalPrice(finalPrice)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -90,6 +90,21 @@ public class BookingServiceImpl implements BookingService {
         booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)));
 
         return mapToResponse(bookingRepository.save(booking));
+    }
+
+    @Override
+    public BookingResponse approveBooking(UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING bookings can be approved.");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);  // Set new status
+        bookingRepository.save(booking);
+
+        return mapToResponse(booking);  // Assuming you have a mapper
     }
 
     @Override
