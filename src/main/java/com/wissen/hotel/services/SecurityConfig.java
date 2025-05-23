@@ -65,7 +65,13 @@ public class SecurityConfig {
                     "/api/rooms/types"
                 ).permitAll()
 
-                //User Endpoints
+                // Amenity endpoints
+                .requestMatchers(HttpMethod.GET, "/api/amenities", "/api/amenities/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/amenities").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/amenities/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/amenities/**").hasRole("ADMIN")
+
+                // User endpoints
                 .requestMatchers(HttpMethod.GET, "/api/users/me/bookings").authenticated()
 
                 // Room management
@@ -85,7 +91,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/hotels/{id}/approve").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER")
 
-                // Booking endpoints (NEW)
+                // Booking endpoints
                 .requestMatchers(HttpMethod.POST, "/api/bookings").hasRole("CUSTOMER")
                 .requestMatchers(HttpMethod.GET, "/api/bookings/{id}").hasAnyRole("CUSTOMER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/bookings/{id}").hasRole("CUSTOMER")
