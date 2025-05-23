@@ -3,27 +3,30 @@ package com.wissen.hotel.services;
 import com.wissen.hotel.utils.JwtAuthenticationFilter;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.utils.JwtUtil;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.core.userdetails.UserDetailsService;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SecurityConfig {
@@ -47,55 +50,85 @@ public class SecurityConfig {
         return new JwtAuthenticationFilter(jwtUtil, userRepository);
     }
 
+
+    
     @Bean
-    @Order(1)
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8080")); // Specific frontend URL
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-        .authorizeHttpRequests(auth -> auth
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .authorizeHttpRequests(auth -> {
+                // Public endpoints
+                auth.requestMatchers(
+                    "/api/auth/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/h2-console/**"
+                ).permitAll();
+                
+                auth.requestMatchers("/test").permitAll();
+                auth.requestMatchers("/api/images/**").permitAll();
+                auth.requestMatchers("/api/hotels/*/images").permitAll();
+                auth.requestMatchers("/api/rooms/*/images").permitAll();
 
-    // Public endpoints
-    .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/h2-console/**", "/test").permitAll()
+                // Public GET hotel and room endpoints
+                auth.requestMatchers(HttpMethod.GET, 
+                    "/api/hotels",
+                    "/api/hotels/search",
+                    "/api/hotels/top-rated",
+                    "/api/rooms/types"
+                ).permitAll();
+                
+                // Dynamic path patterns
+                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/availability").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/reviews").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/hotels/*/rooms").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*/availability").permitAll();
 
-    // Public GET hotel and room endpoints
-    .requestMatchers(HttpMethod.GET,
-            "/api/hotels",
-            "/api/hotels/search",
-            "/api/hotels/top-rated",
-            "/api/hotels/{id}",
-            "/api/hotels/{id}/availability",
-            "/api/hotels/{id}/reviews",
-            "/api/hotels/{id}/rooms",
-            "/api/rooms/{id}",
-            "/api/rooms/{id}/availability",
-            "/api/rooms/types"
-    ).permitAll()
+                // Review endpoints
+                auth.requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/api/reviews").authenticated();
+                auth.requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated();
 
-    // Room management (protected)
-    .requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
-    .requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
-    .requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
+                // Hotel endpoints
+                auth.requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/hotels/*/approve").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER");
 
-    // Review endpoints
-    .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
-    .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()
-    .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
+                // Room management (protected)
+                auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
-    // Hotel endpoints
-    .requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN")
-    .requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
-    .requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN")
-    .requestMatchers(HttpMethod.PUT, "/api/hotels/{id}/approve").hasRole("ADMIN")
-    .requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER")
+                // Admin-only
+                auth.requestMatchers("/api/users/admin/**").hasRole("ADMIN");
 
-    // Admin-only
-    .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
 
-    // Any other request must be authenticated
-    .anyRequest().authenticated()
-)
-
-        .headers(headers -> headers.frameOptions().disable()) // For H2 Console
-        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                // Any other request must be authenticated
+                auth.anyRequest().authenticated();
+            })
+            .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -120,4 +153,6 @@ public class SecurityConfig {
 
         return new InMemoryUserDetailsManager(user);
     }
+    
+
 }

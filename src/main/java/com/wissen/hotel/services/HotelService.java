@@ -22,5 +22,7 @@ public interface HotelService {
     Object getHotelReviews(UUID hotelId);
     Object checkAvailability(UUID hotelId, String checkIn, String checkOut);
     List<HotelResponse> getHotelsOwnedByCurrentUser();
+    
+    List<HotelResponse> getFeaturedHotels();
 
 }

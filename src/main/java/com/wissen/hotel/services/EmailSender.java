@@ -38,5 +38,34 @@ public class EmailSender {
             throw new RuntimeException("Failed to send verification email", e);
         }
     }
+    
+    public void sendWelcomeEmail(String to, String name) {
+        try {
+            logger.info("Sending welcome email to: {}", to);
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("welcome@hotelbooking.com");
+            message.setTo(to);
+            message.setSubject("Welcome to Hotel Booking Platform!");
+            
+            String emailContent = String.format(
+                "Dear %s,\n\n" +
+                "Welcome to Hotel Booking Platform! We're excited to have you on board.\n" +
+                "Thank you for registering as a hotel owner. You can now start listing your properties and manage your bookings.\n\n" +
+                "If you have any questions or need assistance, feel free to contact our support team.\n\n" +
+                "Best regards,\n" +
+                "The Hotel Booking Team",
+                name
+            );
+            
+            message.setText(emailContent);
+            
+            mailSender.send(message);
+            logger.info("Welcome email sent successfully to: {}", to);
+        } catch (Exception e) {
+            logger.error("Error sending welcome email to {}: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send welcome email", e);
+        }
+    }
 }
 
