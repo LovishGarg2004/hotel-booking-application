@@ -11,5 +11,4 @@ public class AmenityResponse {
     private UUID amenityId;
     private String name;
     private String description;
-    private String imageUrl;
 }

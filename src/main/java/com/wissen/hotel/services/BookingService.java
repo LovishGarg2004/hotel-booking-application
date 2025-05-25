@@ -2,6 +2,7 @@ package com.wissen.hotel.services;
 
 import com.wissen.hotel.dtos.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,4 +15,5 @@ public interface BookingService {
     List<BookingResponse> getAllBookings(String filter); // Admin only
     List<BookingResponse> getBookingsForHotel(UUID hotelId);
     BookingResponse generateInvoice(UUID bookingId);
+    boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut);
 }

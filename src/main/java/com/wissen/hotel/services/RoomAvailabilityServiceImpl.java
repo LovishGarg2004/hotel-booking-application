@@ -25,14 +25,15 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
     public boolean isRoomAvailable(UUID roomId, LocalDate date) {
         RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
         if (availability == null) {
-            return false; // If no availability record exists, assume room is available
+            return true; // If no availability record exists, assume room is available
         }
         return availability.getAvailableRooms() > 0;
     }
 
     @Override
-    public boolean isRoomAvailableForRange(UUID roomId, LocalDate start, LocalDate end) {
-        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+    public boolean isRoomAvailableForRange(UUID roomId, LocalDate checkin, LocalDate checkout) {
+        // Check every date in the range [checkin, checkout) for availability
+        for (LocalDate date = checkin; date.isBefore(checkout); date = date.plusDays(1)) {
             if (!isRoomAvailable(roomId, date)) {
                 return false;
             }
@@ -45,14 +46,22 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
         Room room = roomRepository.findById(roomId).orElseThrow();
         RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, request.getDate());
 
+        int roomsToBook = request.getRoomsToBook();
         if (availability == null) {
+            int availableRooms = room.getTotalRooms() - roomsToBook;
+            if (roomsToBook > room.getTotalRooms()) {
+                throw new IllegalArgumentException("Rooms to book cannot exceed total rooms.");
+            }
             availability = RoomAvailability.builder()
-                    .room(room)
-                    .date(request.getDate())
-                    .availableRooms(request.getRoomsAvailable())
-                    .build();
+                .room(room)
+                .date(request.getDate())
+                .availableRooms(availableRooms)
+                .build();
         } else {
-            availability.setAvailableRooms(request.getRoomsAvailable());
+            if (roomsToBook > availability.getAvailableRooms()) {
+                throw new IllegalArgumentException("Rooms to book cannot exceed available rooms.");
+            }
+            availability.setAvailableRooms(availability.getAvailableRooms() - roomsToBook);
         }
 
         availabilityRepository.save(availability);

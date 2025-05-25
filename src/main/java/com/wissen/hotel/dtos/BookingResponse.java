@@ -18,6 +18,7 @@ public class BookingResponse {
     private LocalDate checkIn;
     private LocalDate checkOut;
     private int guests;
+    private int roomsBooked; // number of rooms booked for one night
     private BigDecimal finalPrice;
     private BookingStatus status;
     private LocalDateTime createdAt;
