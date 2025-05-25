@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,11 +64,13 @@ public class HotelController {
 
     @GetMapping("/search")
     public ResponseEntity<List<HotelResponse>> searchHotels(
-            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String city,
+            @RequestParam(required = false) LocalDate checkIn,
+            @RequestParam(required = false) LocalDate checkOut,
+            @RequestParam(required = false) Integer numberOfGuests,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(hotelService.searchHotels(keyword, city, page, size));
+        return ResponseEntity.ok(hotelService.searchHotels(city, checkIn, checkOut, numberOfGuests, page, size));
     }
 
     @GetMapping("/top-rated")

@@ -4,7 +4,6 @@ import com.wissen.hotel.dtos.AmenityResponse;
 import com.wissen.hotel.dtos.CreateOrUpdateAmenityRequest;
 import com.wissen.hotel.models.Amenity;
 import com.wissen.hotel.repositories.AmenityRepository;
-import com.wissen.hotel.services.AmenityService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,6 @@ public class AmenityServiceImpl implements AmenityService {
                 .amenityId(amenity.getAmenityId())
                 .name(amenity.getName())
                 .description(amenity.getDescription())
-                .imageUrl(amenity.getImageUrl())
                 .build();
     }
 
@@ -47,7 +45,6 @@ public class AmenityServiceImpl implements AmenityService {
         Amenity amenity = Amenity.builder()
                 .name(request.getName())
                 .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
                 .build();
         return mapToDto(amenityRepository.save(amenity));
     }
@@ -59,7 +56,6 @@ public class AmenityServiceImpl implements AmenityService {
 
         amenity.setName(request.getName());
         amenity.setDescription(request.getDescription());
-        amenity.setImageUrl(request.getImageUrl());
 
         return mapToDto(amenityRepository.save(amenity));
     }

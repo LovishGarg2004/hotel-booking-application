@@ -27,6 +27,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final RoomAvailabilityRepository roomAvailabilityRepository;
+    private final RoomAvailabilityService roomAvailabilityService;
 
     @Override
     public BookingResponse createBooking(CreateBookingRequest request) {
@@ -36,7 +38,7 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         User user = AuthUtil.getCurrentUser(); // TODO: Replace with real authenticated user ID
-    
+
         validateBookingDates(request.getCheckIn(), request.getCheckOut());
 
         boolean isAvailable = isRoomAvailable(room.getRoomId(), request.getCheckIn(), request.getCheckOut());
@@ -45,7 +47,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
-        BigDecimal finalPrice = room.getBasePrice().multiply(BigDecimal.valueOf(days));
+        BigDecimal finalPrice = room.getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked()));
 
         Booking booking = Booking.builder()
                 .room(room)
@@ -53,12 +55,17 @@ public class BookingServiceImpl implements BookingService {
                 .checkIn(request.getCheckIn())
                 .checkOut(request.getCheckOut())
                 .guests(request.getGuests())
+                .roomsBooked(request.getRoomsBooked())
                 .status(BookingStatus.PENDING)
                 .finalPrice(finalPrice)
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return mapToResponse(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+
+        approveBooking(booking.getBookingId()); // Automatically approve the booking for simplicity in this example
+        // Update room availability when a booking is approved
+        return mapToResponse(savedBooking);
     }
 
     @Override
@@ -82,12 +89,34 @@ public class BookingServiceImpl implements BookingService {
             throw new BadRequestException("Room is not available for the new dates.");
         }
 
+        // Restore previous room availability for the old booking range
+        LocalDate oldCurrent = booking.getCheckIn();
+        while (oldCurrent.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest restoreRequest = new UpdateInventoryRequest();
+            restoreRequest.setDate(oldCurrent);
+            restoreRequest.setRoomsToBook(-booking.getRoomsBooked()); // Add back previously booked rooms
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), restoreRequest);
+            oldCurrent = oldCurrent.plusDays(1);
+        }
+
+        // Update booking fields
         booking.setCheckIn(request.getCheckIn());
         booking.setCheckOut(request.getCheckOut());
         booking.setGuests(request.getGuests());
+        booking.setRoomsBooked(request.getRoomsBooked());
 
         long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
-        booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)));
+        booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked())));
+
+        // Deduct new room availability for the new booking range
+        LocalDate newCurrent = booking.getCheckIn();
+        while (newCurrent.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest deductRequest = new UpdateInventoryRequest();
+            deductRequest.setDate(newCurrent);
+            deductRequest.setRoomsToBook(booking.getRoomsBooked());
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), deductRequest);
+            newCurrent = newCurrent.plusDays(1);
+        }
 
         return mapToResponse(bookingRepository.save(booking));
     }
@@ -104,17 +133,40 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.CONFIRMED);  // Set new status
         bookingRepository.save(booking);
 
+        // Update inventory (room availability) for each date between check-in and check-out (exclusive)
+        LocalDate current = booking.getCheckIn();
+        while (current.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
+            inventoryRequest.setDate(current);
+            inventoryRequest.setRoomsToBook(booking.getRoomsBooked()); // Use roomsBooked for inventory update
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
+            current = current.plusDays(1);
+        }
+
         return mapToResponse(booking);  // Assuming you have a mapper
     }
 
     @Override
+    //Implementation for cancelBooking with the RoomAvailabilityService, as making the availableRooms equal to totalRooms - roomsBooked in this booking
     public BookingResponse cancelBooking(UUID bookingId) {
         log.info("Cancelling booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         booking.setStatus(BookingStatus.CANCELLED);
-        return mapToResponse(bookingRepository.save(booking));
+        bookingRepository.save(booking);
+
+        // Restore room availability for each date in the booking range
+        LocalDate current = booking.getCheckIn();
+        while (current.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
+            inventoryRequest.setDate(current);
+            inventoryRequest.setRoomsToBook(-booking.getRoomsBooked()); // Negative to add rooms back
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
+            current = current.plusDays(1);
+        }
+
+        return mapToResponse(booking);
     }
 
     @Override
@@ -153,25 +205,36 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut) {
+    @Override
+    public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut) {
         return isRoomAvailable(roomId, checkIn, checkOut, null);
     }
 
-    private boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
+    public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
+        // 1. Check existing bookings for the room
         List<Booking> existingBookings = bookingRepository.findByRoom_RoomId(roomId);
-    
-        for (Booking b : existingBookings) {
-            if (excludeBookingId != null && b.getBookingId().equals(excludeBookingId)) continue;
-    
-            if (b.getStatus() != BookingStatus.CANCELLED &&
-                !(checkOut.isBefore(b.getCheckIn()) || checkIn.isAfter(b.getCheckOut()))) {
-                return false; // Overlapping booking exists
-            }
+
+        for (Booking booking : existingBookings) {
+            // Skip if it's the same booking we're updating
+            if (excludeBookingId != null && booking.getBookingId().equals(excludeBookingId)) continue;
+
+            // Skip cancelled bookings
+            if (booking.getStatus() == BookingStatus.CANCELLED) continue;
+
+            // Check for date overlap (checkIn and checkOut are exclusive)
+            boolean overlaps = !(checkOut.isBefore(booking.getCheckIn()) || checkOut.equals(booking.getCheckIn())
+                    || checkIn.isAfter(booking.getCheckOut()) || checkIn.equals(booking.getCheckOut()));
+            if (overlaps) return false;
         }
-    
-        return true; // No overlapping bookings
+
+        // 2. Use RoomAvailabilityServiceImpl to check blocked dates
+        // Assuming you have a RoomAvailabilityServiceImpl bean injected as roomAvailabilityService
+        if (!roomAvailabilityService.isRoomAvailableForRange(roomId, checkIn, checkOut)) {
+            return false;
+        }
+
+        return true; // Room is available for this date range
     }
-    
 
     private BookingResponse mapToResponse(Booking booking) {
         return BookingResponse.builder()
@@ -181,6 +244,7 @@ public class BookingServiceImpl implements BookingService {
                 .checkIn(booking.getCheckIn())
                 .checkOut(booking.getCheckOut())
                 .guests(booking.getGuests())
+                .roomsBooked(booking.getRoomsBooked())
                 .finalPrice(booking.getFinalPrice())
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())

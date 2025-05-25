@@ -33,6 +33,8 @@ public class Booking {
     private LocalDate checkIn;
     private LocalDate checkOut;
     private int guests;
+    
+    private int roomsBooked; // number of rooms booked for one night
     private BigDecimal finalPrice;
 
     @Enumerated(EnumType.STRING)

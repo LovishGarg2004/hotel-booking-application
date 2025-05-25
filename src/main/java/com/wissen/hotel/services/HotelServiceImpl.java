@@ -4,7 +4,9 @@ import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
 import com.wissen.hotel.models.Hotel;
+import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.HotelRepository;
+import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.utils.AuthUtil;
 
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +26,8 @@ public class HotelServiceImpl implements HotelService {
 
     private static final Logger logger = LoggerFactory.getLogger(HotelServiceImpl.class);
     private final HotelRepository hotelRepository;
+    private final RoomRepository roomRepository;
+    private final RoomAvailabilityService roomAvailabilityService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
@@ -134,16 +139,26 @@ public class HotelServiceImpl implements HotelService {
     }
 
     @Override
-    public List<HotelResponse> searchHotels(String keyword, String city, int page, int size) {
+    public List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size) {
         return hotelRepository.findAll().stream()
-                .filter(h -> (keyword == null || h.getName().toLowerCase().contains(keyword.toLowerCase()) ||
-                            h.getDescription().toLowerCase().contains(keyword.toLowerCase())) &&
-                            (city == null || h.getCity().equalsIgnoreCase(city)))
+                .filter(hotel ->
+                    (city == null || hotel.getCity().equalsIgnoreCase(city))
+                )
+                .filter(hotel -> {
+                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+
+                    return rooms.stream()
+                            .filter(room -> room.getCapacity() >= numberOfGuests)
+                            .anyMatch(room ->
+                                    roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkIn, checkOut)
+                            );
+                })
                 .skip((long) page * size)
                 .limit(size)
                 .map(this::mapToResponse)
                 .toList();
     }
+
 
     @Override
     public List<HotelResponse> getTopRatedHotels() {

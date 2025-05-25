@@ -28,6 +28,7 @@ public class RoomServiceImpl implements RoomService {
     private final BookingRepository bookingRepository;
     private final RoomAmenityRepository roomAmenityRepository;
     private final AmenityRepository amenityRepository;
+    private final BookingService bookingService;
 
     @Override
     public RoomResponse createRoom(UUID hotelId, CreateRoomRequest request) {
@@ -93,14 +94,11 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut) {
         log.info("Checking availability for room {} from {} to {}", roomId, checkIn, checkOut);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        // Delegate to BookingServiceImpl's isRoomAvailable method
+        // Assuming BookingServiceImpl is a Spring bean and injected here
+        // Add: private final BookingService bookingService; at the top with other dependencies
 
-        long bookedRooms = bookingRepository.findByRoom_RoomId(roomId).stream()
-                .filter(b -> !(b.getCheckOut().isBefore(checkIn) || b.getCheckIn().isAfter(checkOut)))
-                .count();
-
-        return bookedRooms < room.getTotalRooms();
+        return bookingService.isRoomAvailable(roomId, checkIn, checkOut);
     }
 
     @Override
