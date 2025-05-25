@@ -81,7 +81,10 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
-    jacoco {
+}
+
+
+jacoco {
         toolVersion = "0.8.8"
     }
 
@@ -100,7 +103,6 @@ tasks.named('test') {
             property "sonar.host.url", "https://sonarcloud.io"
         }
     }
-}
 sonar {
   properties {
     property "sonar.projectKey", "hotel-booking-application"

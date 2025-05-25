@@ -4,6 +4,7 @@ import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,7 +16,7 @@ public interface HotelService {
     void deleteHotel(UUID id);
     HotelResponse approveHotel(UUID id);
 
-    List<HotelResponse> searchHotels(String keyword, String city, int page, int size);
+    List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size);
     List<HotelResponse> getTopRatedHotels();
     List<HotelResponse> findNearbyHotels(double latitude, double longitude, double radiusKm);
     Object getHotelRooms(UUID hotelId);

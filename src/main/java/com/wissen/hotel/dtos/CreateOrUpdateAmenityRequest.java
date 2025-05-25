@@ -6,5 +6,4 @@ import lombok.Data;
 public class CreateOrUpdateAmenityRequest {
     private String name;
     private String description;
-    private String imageUrl;
 }
