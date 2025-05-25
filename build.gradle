@@ -88,27 +88,20 @@ jacoco {
         toolVersion = "0.8.8"
     }
 
-    jacocoTestReport {
-        dependsOn test
-        reports {
-            xml.required = true
-            html.required = true
-        }
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
     }
+}
 
-    sonar {
-        properties {
-            property "sonar.projectKey", "hotel-booking-application"
-            property "sonar.organization", "lovishgarg2004"
-            property "sonar.host.url", "https://sonarcloud.io"
-        }
-    }
 sonar {
-  properties {
-    property "sonar.projectKey", "hotel-booking-application"
-    property "sonar.organization", "lovishgarg2004"
-    property "sonar.host.url", "https://sonarcloud.io"
-  }
+    properties {
+        property "sonar.projectKey", "hotel-booking-application"
+        property "sonar.organization", "lovishgarg2004"
+        property "sonar.host.url", "https://sonarcloud.io"
+    }
 }
 
 tasks.withType(JavaCompile) {
