@@ -33,8 +33,9 @@ public class HotelController {
         return ResponseEntity.ok(hotelService.getAllHotels(city, page, size));
     }
 
+
     @GetMapping("/{id}")
-    public ResponseEntity<HotelResponse> getHotelById(@PathVariable UUID id) {
+    public ResponseEntity<HotelResponse> getHotelById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(hotelService.getHotelById(id));
     }
 
@@ -44,18 +45,18 @@ public class HotelController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<HotelResponse> updateHotel(@PathVariable UUID id, @RequestBody UpdateHotelRequest request) {
+    public ResponseEntity<HotelResponse> updateHotel(@PathVariable("id") UUID id, @RequestBody UpdateHotelRequest request) {
         return ResponseEntity.ok(hotelService.updateHotel(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteHotel(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteHotel(@PathVariable("id") UUID id) {
         hotelService.deleteHotel(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/approve")
-    public ResponseEntity<HotelResponse> approveHotel(@PathVariable UUID id) {
+    public ResponseEntity<HotelResponse> approveHotel(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(hotelService.approveHotel(id));
     }
 
@@ -84,12 +85,12 @@ public class HotelController {
     }
 
     @GetMapping("/{id}/rooms")
-    public ResponseEntity<?> getHotelRooms(@PathVariable UUID id) {
+    public ResponseEntity<?> getHotelRooms(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(hotelService.getHotelRooms(id));
     }
 
     @GetMapping("/{id}/reviews")
-    public ResponseEntity<List<ReviewResponse>> getReviewsByHotel(@PathVariable UUID hotelId) {
+    public ResponseEntity<List<ReviewResponse>> getReviewsByHotel(@PathVariable("id") UUID hotelId) {
         List<ReviewResponse> reviews = reviewService.getReviewsByHotel(hotelId);
         return ResponseEntity.ok(reviews);
     }

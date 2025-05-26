@@ -20,7 +20,7 @@ public class RoomController {
 
     // Get room details
     @GetMapping("/{id}")
-    public ResponseEntity<RoomResponse> getRoomById(@PathVariable UUID id) {
+    public ResponseEntity<RoomResponse> getRoomById(@PathVariable("id") UUID id) {
         log.info("Fetching room by ID: {}", id);
         return ResponseEntity.ok(roomService.getRoomById(id));
     }
@@ -28,7 +28,7 @@ public class RoomController {
     // Add room to hotel
     @PostMapping("/hotel/{hotelId}")
     public ResponseEntity<RoomResponse> addRoomToHotel(
-            @PathVariable UUID hotelId,
+            @PathVariable("hotelId") UUID hotelId,
             @RequestBody CreateRoomRequest request
     ) {
         log.info("Adding room to hotel: {}", hotelId);
@@ -39,7 +39,7 @@ public class RoomController {
     // Update room details
     @PutMapping("/{id}")
     public ResponseEntity<RoomResponse> updateRoom(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody UpdateRoomRequest request
     ) {
         log.info("Updating room: {}", id);
@@ -49,7 +49,7 @@ public class RoomController {
 
     // Delete room
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRoom(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteRoom(@PathVariable("id") UUID id) {
         log.info("Deleting room: {}", id);
         roomService.deleteRoom(id);
         return ResponseEntity.noContent().build();
@@ -58,9 +58,9 @@ public class RoomController {
     // Check room availability
         @GetMapping("/{id}/availability")
     public ResponseEntity<Boolean> checkAvailability(
-            @PathVariable UUID id,
-            @RequestParam LocalDate checkIn,
-            @RequestParam LocalDate checkOut) {
+            @PathVariable("id") UUID id,
+            @RequestParam(name = "checkIn") LocalDate checkIn,
+            @RequestParam(name = "checkOut") LocalDate checkOut) {
         log.info("Checking availability for room: {} from {} to {}", id, checkIn, checkOut);
         return ResponseEntity.ok(roomService.isRoomAvailable(id, checkIn, checkOut));
     }
@@ -69,7 +69,7 @@ public class RoomController {
     //TODO: After implementing the amenity service, this endpoint will be used to update the amenities of a room
     @PutMapping("/{id}/amenities")
     public ResponseEntity<RoomResponse> updateAmenities(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody List<String> amenities
     ) {
         log.info("Updating amenities for room: {}", id);

@@ -199,7 +199,8 @@ public class BookingServiceImpl implements BookingService {
         return mapToResponse(booking);
     }
 
-    private void validateBookingDates(LocalDate checkIn, LocalDate checkOut) {
+    @Override
+    public void validateBookingDates(LocalDate checkIn, LocalDate checkOut) {
         if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
             throw new BadRequestException("Invalid check-in or check-out dates.");
         }
@@ -211,22 +212,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
-        // 1. Check existing bookings for the room
-        List<Booking> existingBookings = bookingRepository.findByRoom_RoomId(roomId);
-
-        for (Booking booking : existingBookings) {
-            // Skip if it's the same booking we're updating
-            if (excludeBookingId != null && booking.getBookingId().equals(excludeBookingId)) continue;
-
-            // Skip cancelled bookings
-            if (booking.getStatus() == BookingStatus.CANCELLED) continue;
-
-            // Check for date overlap (checkIn and checkOut are exclusive)
-            boolean overlaps = !(checkOut.isBefore(booking.getCheckIn()) || checkOut.equals(booking.getCheckIn())
-                    || checkIn.isAfter(booking.getCheckOut()) || checkIn.equals(booking.getCheckOut()));
-            if (overlaps) return false;
-        }
-
         // 2. Use RoomAvailabilityServiceImpl to check blocked dates
         // Assuming you have a RoomAvailabilityServiceImpl bean injected as roomAvailabilityService
         if (!roomAvailabilityService.isRoomAvailableForRange(roomId, checkIn, checkOut)) {
