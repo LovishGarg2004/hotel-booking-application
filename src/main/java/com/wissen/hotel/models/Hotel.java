@@ -40,4 +40,7 @@ public class Hotel {
     private BigDecimal longitude;
     private LocalDateTime createdAt;
     private boolean isApproved;
+    
+    @Builder.Default
+    private boolean featured = false;
 }

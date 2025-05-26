@@ -23,11 +23,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
+
     private static final Logger logger = LoggerFactory.getLogger(HotelServiceImpl.class);
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
     private final RoomAvailabilityService roomAvailabilityService;
-    private final BookingService bookingService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
@@ -122,9 +122,6 @@ public class HotelServiceImpl implements HotelService {
     }
 
     private HotelResponse mapToResponse(Hotel hotel) {
-        if (hotel == null) {
-            throw new IllegalArgumentException("Hotel cannot be null");
-        }
         return HotelResponse.builder()
                 .hotelId(hotel.getHotelId())
                 .name(hotel.getName())
@@ -137,15 +134,12 @@ public class HotelServiceImpl implements HotelService {
                 .longitude(hotel.getLongitude())
                 .isApproved(hotel.isApproved())
                 .createdAt(hotel.getCreatedAt())
-                .ownerId(hotel.getOwner() != null ? hotel.getOwner().getUserId() : null)
+                .ownerId(hotel.getOwner().getUserId())
                 .build();
     }
 
     @Override
     public List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size) {
-        // Validate booking dates using BookingService
-        bookingService.validateBookingDates(checkIn, checkOut);
-
         return hotelRepository.findAll().stream()
                 .filter(hotel ->
                     (city == null || hotel.getCity().equalsIgnoreCase(city))
@@ -156,7 +150,7 @@ public class HotelServiceImpl implements HotelService {
                     return rooms.stream()
                             .filter(room -> room.getCapacity() >= numberOfGuests)
                             .anyMatch(room ->
-                                    bookingService.isRoomAvailable(room.getRoomId(), checkIn, checkOut)
+                                    roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkIn, checkOut)
                             );
                 })
                 .skip((long) page * size)
@@ -218,7 +212,7 @@ public class HotelServiceImpl implements HotelService {
 
     // Helper to calculate distance (Haversine)
     private double distance(double lat1, double lon1, double lat2, double lon2) {
-        final double earthRadius = 6371; // km
+        double earthRadius = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lon2 - lon1);
         double sindLat = Math.sin(dLat / 2);
@@ -227,5 +221,7 @@ public class HotelServiceImpl implements HotelService {
                 * Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2));
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return earthRadius * c;
-    }
+}
+
+    
 }
