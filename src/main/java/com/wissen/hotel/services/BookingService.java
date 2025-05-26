@@ -15,5 +15,6 @@ public interface BookingService {
     List<BookingResponse> getAllBookings(String filter); // Admin only
     List<BookingResponse> getBookingsForHotel(UUID hotelId);
     BookingResponse generateInvoice(UUID bookingId);
+    void validateBookingDates(LocalDate checkIn, LocalDate checkOut);
     boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut);
 }
