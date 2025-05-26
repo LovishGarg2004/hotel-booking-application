@@ -12,7 +12,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -76,6 +75,7 @@ public class SecurityConfig {
                             // Public endpoints
                             auth.requestMatchers(
                     "/api/auth/**",
+                    "/api/pricing/calculate",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
@@ -129,6 +129,22 @@ public class SecurityConfig {
                 // Admin-only
                 auth.requestMatchers("/api/users/admin/**").hasRole("ADMIN");
 
+                // ======== Pricing Rules Authorization ========
+                // Create/Update/Delete pricing rules
+                auth.requestMatchers(HttpMethod.POST, "/api/pricing/rules").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                
+                // Get pricing rules
+                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules").hasAnyRole("ADMIN");
+                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                
+                // Hotel-specific pricing rules
+                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                
+                // Price simulation
+                auth.requestMatchers(HttpMethod.POST, "/api/pricing/simulate").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                // ======== End Pricing Rules ========
 
                 // Any other request must be authenticated
                 auth.anyRequest().authenticated();

@@ -5,7 +5,6 @@ import com.wissen.hotel.enums.RoomType;
 import com.wissen.hotel.exceptions.ResourceNotFoundException;
 import com.wissen.hotel.models.*;
 import com.wissen.hotel.repositories.AmenityRepository;
-import com.wissen.hotel.repositories.BookingRepository;
 import com.wissen.hotel.repositories.HotelRepository;
 import com.wissen.hotel.repositories.RoomAmenityRepository;
 import com.wissen.hotel.repositories.RoomRepository;
@@ -13,10 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,10 +22,11 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
-    private final BookingRepository bookingRepository;
     private final RoomAmenityRepository roomAmenityRepository;
     private final AmenityRepository amenityRepository;
     private final BookingService bookingService;
+
+    private static final String ROOM_NOT_FOUND = "Room not found";
 
     @Override
     public RoomResponse createRoom(UUID hotelId, CreateRoomRequest request) {
@@ -56,7 +54,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse getRoomById(UUID roomId) {
         log.info("Fetching room details for roomId {}", roomId);
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
         return mapToResponse(room);
     }
 
@@ -64,7 +62,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse updateRoom(UUID roomId, UpdateRoomRequest request) {
         log.info("Updating room {}", roomId);
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
         if (!room.getHotel().isApproved()) {
             throw new IllegalStateException("Cannot update room of an unapproved hotel.");
@@ -82,7 +80,7 @@ public class RoomServiceImpl implements RoomService {
     public void deleteRoom(UUID roomId) {
         log.info("Deleting room {}", roomId);
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
         if (!room.getHotel().isApproved()) {
             throw new IllegalStateException("Cannot delete room of an unapproved hotel.");
@@ -105,7 +103,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse updateRoomAmenities(UUID roomId, List<String> amenities) {
         log.info("Updating room amenities for room {}", roomId);
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
         if (!room.getHotel().isApproved()) {
             throw new IllegalStateException("Cannot update amenities of a room in an unapproved hotel.");
@@ -124,7 +122,7 @@ public class RoomServiceImpl implements RoomService {
                             .amenity(amenity)
                             .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         room.getRoomAmenities().addAll(updatedAmenities);
         roomAmenityRepository.saveAll(updatedAmenities);
@@ -137,13 +135,13 @@ public class RoomServiceImpl implements RoomService {
         log.info("Fetching all room types");
         return Arrays.stream(RoomType.values())
                 .map(Enum::name)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ------------------ Helper ------------------
     private RoomResponse mapToResponse(Room room) {
         List<String> amenities = room.getRoomAmenities() != null ?
-                room.getRoomAmenities().stream().map(roomAmenity -> roomAmenity.getAmenity().getName()).collect(Collectors.toList()) :
+                room.getRoomAmenities().stream().map(roomAmenity -> roomAmenity.getAmenity().getName()).toList() :
                 Collections.emptyList();
 
         return RoomResponse.builder()
