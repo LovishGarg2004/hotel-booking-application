@@ -3,6 +3,7 @@ package com.wissen.hotel.services;
 import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
+import com.wissen.hotel.dtos.RoomResponse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,8 +20,7 @@ public interface HotelService {
     List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size);
     List<HotelResponse> getTopRatedHotels();
     List<HotelResponse> findNearbyHotels(double latitude, double longitude, double radiusKm);
-    Object getHotelRooms(UUID hotelId);
-    Object getHotelReviews(UUID hotelId);
+    List<RoomResponse> getHotelRooms(UUID hotelId);
     Object checkAvailability(UUID hotelId, String checkIn, String checkOut);
     List<HotelResponse> getHotelsOwnedByCurrentUser();
     
