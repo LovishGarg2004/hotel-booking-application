@@ -41,6 +41,5 @@ public class Hotel {
     private LocalDateTime createdAt;
     private boolean isApproved;
     
-    @Builder.Default
-    private boolean featured = false;
+
 }
