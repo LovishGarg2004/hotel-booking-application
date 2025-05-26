@@ -48,7 +48,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           ./gradlew sonar \
-            -Dsonar.projectKey=saloni_hotel-booking \
-            -Dsonar.organization=saloni-org \
+            -Dsonar.projectKey=hotel-booking-application \
+            -Dsonar.organization=lovishgarg2004 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
