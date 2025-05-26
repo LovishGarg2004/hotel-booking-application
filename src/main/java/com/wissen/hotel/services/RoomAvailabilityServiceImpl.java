@@ -6,12 +6,12 @@ import com.wissen.hotel.models.Room;
 import com.wissen.hotel.models.RoomAvailability;
 import com.wissen.hotel.repositories.RoomAvailabilityRepository;
 import com.wissen.hotel.repositories.RoomRepository;
-import com.wissen.hotel.services.RoomAvailabilityService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -95,4 +95,29 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
             }
         }
     }
+
+    public double getHotelAvailabilityRatio(UUID hotelId, LocalDate checkIn, LocalDate checkOut) {
+        List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
+        int totalRooms = rooms.stream().mapToInt(Room::getTotalRooms).sum();
+        if (totalRooms == 0) return 0.0;
+
+        int days = 0;
+        double totalRatio = 0.0;
+
+        for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+            int availableRooms = 0;
+            for (Room room : rooms) {
+                RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
+                if (availability != null) {
+                    availableRooms += availability.getAvailableRooms();
+                } else {
+                    availableRooms += room.getTotalRooms(); // If no record, assume all available
+                }
+            }
+            totalRatio += ((double) availableRooms / totalRooms);
+            days++;
+        }
+        return days == 0 ? 1.0 : totalRatio / days;
+    }
+
 }

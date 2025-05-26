@@ -17,7 +17,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,9 +25,9 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
-    private final UserRepository userRepository;
-    private final RoomAvailabilityRepository roomAvailabilityRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+
+    private static final String BOOKING_NOT_FOUND = "Booking not found";
 
     @Override
     public BookingResponse createBooking(CreateBookingRequest request) {
@@ -72,7 +71,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse getBookingById(UUID bookingId) {
         log.info("Fetching booking by ID: {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
         return mapToResponse(booking);
     }
 
@@ -80,7 +79,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse updateBooking(UUID bookingId, UpdateBookingRequest request) {
         log.info("Updating booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
         validateBookingDates(request.getCheckIn(), request.getCheckOut());
 
@@ -124,7 +123,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingResponse approveBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-            .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+            .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new IllegalStateException("Only PENDING bookings can be approved.");
@@ -151,7 +150,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse cancelBooking(UUID bookingId) {
         log.info("Cancelling booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
@@ -173,34 +172,33 @@ public class BookingServiceImpl implements BookingService {
     public List<BookingResponse> getAllBookings(String filter) {
         log.info("Fetching all bookings for admin");
 
-        // TODO: Add authentication check to ensure admin access
+        // TODO: Add authentication check to ensure admin access (implement as needed)
         return bookingRepository.findAll().stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     public List<BookingResponse> getBookingsForHotel(UUID hotelId) {
         log.info("Fetching bookings for hotel ID: {}", hotelId);
 
-        // TODO: Add authentication check to ensure hotel owner/admin access
+        // TODO: Add authentication check to ensure hotel owner/admin access (implement as needed)
         return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     public BookingResponse generateInvoice(UUID bookingId) {
         log.info("Generating invoice for booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
         // You can add detailed invoice logic here
         return mapToResponse(booking);
     }
 
-    @Override
-    public void validateBookingDates(LocalDate checkIn, LocalDate checkOut) {
+    private void validateBookingDates(LocalDate checkIn, LocalDate checkOut) {
         if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
             throw new BadRequestException("Invalid check-in or check-out dates.");
         }
@@ -212,13 +210,17 @@ public class BookingServiceImpl implements BookingService {
     }
 
     public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
-        // 2. Use RoomAvailabilityServiceImpl to check blocked dates
-        // Assuming you have a RoomAvailabilityServiceImpl bean injected as roomAvailabilityService
-        if (!roomAvailabilityService.isRoomAvailableForRange(roomId, checkIn, checkOut)) {
-            return false;
-        }
+        // 1. Check existing bookings for the room
+        List<Booking> existingBookings = bookingRepository.findByRoom_RoomId(roomId);
 
-        return true; // Room is available for this date range
+        for (Booking booking : existingBookings) {
+            if (excludeBookingId != null && booking.getBookingId().equals(excludeBookingId)) continue;
+            if (booking.getStatus() == BookingStatus.CANCELLED) continue;
+            boolean overlaps = !(checkOut.isBefore(booking.getCheckIn()) || checkOut.equals(booking.getCheckIn())
+                    || checkIn.isAfter(booking.getCheckOut()) || checkIn.equals(booking.getCheckOut()));
+            if (overlaps) return false;
+        }
+        return roomAvailabilityService.isRoomAvailableForRange(roomId, checkIn, checkOut);
     }
 
     private BookingResponse mapToResponse(Booking booking) {

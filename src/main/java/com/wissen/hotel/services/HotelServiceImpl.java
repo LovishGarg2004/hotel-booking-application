@@ -3,6 +3,7 @@ package com.wissen.hotel.services;
 import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
+import com.wissen.hotel.dtos.RoomResponse;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.HotelRepository;
@@ -16,18 +17,18 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
+
     private static final Logger logger = LoggerFactory.getLogger(HotelServiceImpl.class);
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
     private final RoomAvailabilityService roomAvailabilityService;
-    private final BookingService bookingService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
@@ -122,9 +123,6 @@ public class HotelServiceImpl implements HotelService {
     }
 
     private HotelResponse mapToResponse(Hotel hotel) {
-        if (hotel == null) {
-            throw new IllegalArgumentException("Hotel cannot be null");
-        }
         return HotelResponse.builder()
                 .hotelId(hotel.getHotelId())
                 .name(hotel.getName())
@@ -137,15 +135,12 @@ public class HotelServiceImpl implements HotelService {
                 .longitude(hotel.getLongitude())
                 .isApproved(hotel.isApproved())
                 .createdAt(hotel.getCreatedAt())
-                .ownerId(hotel.getOwner() != null ? hotel.getOwner().getUserId() : null)
+                .ownerId(hotel.getOwner().getUserId())
                 .build();
     }
 
     @Override
     public List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size) {
-        // Validate booking dates using BookingService
-        bookingService.validateBookingDates(checkIn, checkOut);
-
         return hotelRepository.findAll().stream()
                 .filter(hotel ->
                     (city == null || hotel.getCity().equalsIgnoreCase(city))
@@ -156,7 +151,7 @@ public class HotelServiceImpl implements HotelService {
                     return rooms.stream()
                             .filter(room -> room.getCapacity() >= numberOfGuests)
                             .anyMatch(room ->
-                                    bookingService.isRoomAvailable(room.getRoomId(), checkIn, checkOut)
+                                    roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkIn, checkOut)
                             );
                 })
                 .skip((long) page * size)
@@ -189,36 +184,68 @@ public class HotelServiceImpl implements HotelService {
     }
 
     @Override
-    public Object getHotelRooms(UUID hotelId) {
-        // Stubbed response
-        return "List of rooms for hotel " + hotelId;
-    }
-
-    @Override
-    public Object getHotelReviews(UUID hotelId) {
-        // Stubbed response
-        return "List of reviews for hotel " + hotelId;
+    public List<RoomResponse> getHotelRooms(UUID hotelId) {
+        logger.info("Fetching rooms for hotel ID: {}", hotelId);
+        hotelRepository.findById(hotelId)
+                .orElseThrow(() -> {
+                    logger.warn("Hotel not found for fetching rooms, ID: {}", hotelId);
+                    return new RuntimeException(HOTEL_NOT_FOUND);
+                });
+        List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
+        return rooms.stream()
+            .map(room -> RoomResponse.builder()
+                .roomId(room.getRoomId())
+                .hotelId(room.getHotel().getHotelId())
+                .roomType(room.getRoomType())
+                .capacity(room.getCapacity())
+                .basePrice(room.getBasePrice())
+                .totalRooms(room.getTotalRooms())
+                .amenities(room.getRoomAmenities() != null ?
+                    room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList() :
+                    Collections.emptyList())
+                .build())
+            .toList();
     }
 
     @Override
     public Object checkAvailability(UUID hotelId, String checkIn, String checkOut) {
-        // Stubbed response
-        return "Available rooms at hotel " + hotelId + " from " + checkIn + " to " + checkOut;
+        logger.info("Checking available rooms for hotel ID: {} from {} to {}", hotelId, checkIn, checkOut);
+        hotelRepository.findById(hotelId)
+                .orElseThrow(() -> {
+                    logger.warn("Hotel not found for checking availability, ID: {}", hotelId);
+                    return new RuntimeException(HOTEL_NOT_FOUND);
+                });
+        LocalDate checkInDate = LocalDate.parse(checkIn);
+        LocalDate checkOutDate = LocalDate.parse(checkOut);
+        List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
+        List<RoomResponse> availableRooms = rooms.stream()
+            .filter(room -> roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkInDate, checkOutDate))
+            .map(room -> RoomResponse.builder()
+                .roomId(room.getRoomId())
+                .hotelId(room.getHotel().getHotelId())
+                .roomType(room.getRoomType())
+                .capacity(room.getCapacity())
+                .basePrice(room.getBasePrice())
+                .totalRooms(room.getTotalRooms())
+                .amenities(room.getRoomAmenities() != null ?
+                    room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList() :
+                    Collections.emptyList())
+                .build())
+            .toList();
+        return availableRooms;
     }
 
     @Override
     public List<HotelResponse> getHotelsOwnedByCurrentUser() {
-        // Stubbed current user logic
-        UUID dummyUserId = UUID.randomUUID(); // Replace with actual logged-in user ID
+        UUID currentUserId = AuthUtil.getCurrentUser().getUserId();
         return hotelRepository.findAll().stream()
-                .filter(hotel -> hotel.getOwner() != null && hotel.getOwner().getUserId().equals(dummyUserId))
+                .filter(hotel -> hotel.getOwner() != null && hotel.getOwner().getUserId().equals(currentUserId))
                 .map(this::mapToResponse)
                 .toList();
     }
-
     // Helper to calculate distance (Haversine)
     private double distance(double lat1, double lon1, double lat2, double lon2) {
-        final double earthRadius = 6371; // km
+        double earthRadius = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lon2 - lon1);
         double sindLat = Math.sin(dLat / 2);
@@ -228,4 +255,5 @@ public class HotelServiceImpl implements HotelService {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return earthRadius * c;
     }
+    
 }
