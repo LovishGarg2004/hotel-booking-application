@@ -18,6 +18,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -69,7 +70,7 @@ class HotelControllerTest {
     void testGetHotelById() throws Exception {
         Mockito.when(hotelService.getHotelById(hotelId)).thenReturn(mockHotel);
 
-        mockMvc.perform(get("/api/hotels/{id}", hotelId))
+        mockMvc.perform(get("/api/hotels/{id}",hotelId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Marriott"))
                 .andExpect(jsonPath("$.latitude").value(12.9716))

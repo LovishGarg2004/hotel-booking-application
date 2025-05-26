@@ -94,13 +94,7 @@ dependencyManagement {
  
 tasks.named('test') {
     useJUnitPlatform()
-}
- 
- 
- 
- 
- 
- 
+} 
 jacoco {
     toolVersion = "0.8.8"
 }
@@ -120,4 +114,8 @@ sonar {
     property "sonar.host.url", "https://sonarcloud.io"
   }
 }
- 
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-parameters"
+}
+
