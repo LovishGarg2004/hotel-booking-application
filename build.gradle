@@ -95,7 +95,6 @@ dependencyManagement {
 tasks.named('test') {
     useJUnitPlatform()
 } 
- 
 jacoco {
     toolVersion = "0.8.8"
 }
@@ -119,5 +118,4 @@ sonar {
 tasks.withType(JavaCompile) {
     options.compilerArgs << "-parameters"
 }
-
 
