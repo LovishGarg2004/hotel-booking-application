@@ -13,6 +13,4 @@ public interface HotelRepository extends JpaRepository<Hotel, UUID> {
     
     @Query("SELECT COUNT(h) > 0 FROM Hotel h WHERE h.hotelId = :id AND h.owner.email = :email")
     boolean existsByIdAndOwnerEmail(UUID id, String email);
-    
-    List<Hotel> findByFeaturedTrue();
 }   
