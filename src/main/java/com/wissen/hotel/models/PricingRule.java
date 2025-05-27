@@ -27,8 +27,8 @@ public class PricingRule {
     @Enumerated(EnumType.STRING)
     private PricingRuleType ruleType;
 
-    @Lob
-    private String ruleValue;
+    @Column
+    private Integer ruleValue; // Percentage increase (e.g., 10 for 10%)
     private LocalDate startDate;
     private LocalDate endDate;
 }

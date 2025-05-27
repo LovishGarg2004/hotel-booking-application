@@ -12,4 +12,5 @@ public interface RoomAvailabilityService {
     void updateInventory(UUID roomId, UpdateInventoryRequest request);
     void blockRoomDates(UUID roomId, BlockRoomRequest request);
     void unblockRoomDates(UUID roomId, BlockRoomRequest request);
+    double getHotelAvailabilityRatio(UUID hotelId, LocalDate checkIn, LocalDate checkOut);
 }
