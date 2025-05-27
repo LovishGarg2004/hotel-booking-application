@@ -25,5 +25,5 @@ public interface HotelService {
     List<HotelResponse> getHotelsOwnedByCurrentUser();
     
     // List<HotelResponse> getFeaturedHotels();
-
+    double getAverageRating(UUID hotelId);
 }

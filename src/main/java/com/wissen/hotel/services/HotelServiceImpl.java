@@ -3,6 +3,7 @@ package com.wissen.hotel.services;
 import com.wissen.hotel.dtos.CreateHotelRequest;
 import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
+import com.wissen.hotel.dtos.ReviewResponse;
 import com.wissen.hotel.dtos.RoomResponse;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.Room;
@@ -29,6 +30,7 @@ public class HotelServiceImpl implements HotelService {
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final ReviewService reviewService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
@@ -243,6 +245,13 @@ public class HotelServiceImpl implements HotelService {
                 .map(this::mapToResponse)
                 .toList();
     }
+
+    @Override
+    public double getAverageRating(UUID hotelId) {
+        List<ReviewResponse> reviews = reviewService.getReviewsByHotel(hotelId);
+        return reviews.isEmpty() ? 0.0 : reviews.stream().mapToInt(ReviewResponse::getRating).average().orElse(0.0);
+    }
+
     // Helper to calculate distance (Haversine)
     private double distance(double lat1, double lon1, double lat2, double lon2) {
         double earthRadius = 6371; // km
