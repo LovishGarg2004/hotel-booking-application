@@ -2,6 +2,7 @@ package com.wissen.hotel.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+
 import static org.mockito.Mockito.*;
 
 import com.wissen.hotel.dtos.*;
@@ -138,7 +139,6 @@ public class HotelServiceImplTest {
         verify(roomRepository, times(1)).findAllByHotel_HotelId(mockHotel.getHotelId());
         verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1));
     }
-
     @Test
     void testGetAllHotels_Success() {
         List<Hotel> hotels = List.of(mockHotel);

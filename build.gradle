@@ -115,7 +115,6 @@ sonar {
 
     property "sonar.coverage.exclusions", "**/models/**,**/dtos/**,**/exceptions/**,**/config/**,**/repositories/**,**/utils/**,**/enums/**"
   }
-
 }
 
 tasks.withType(JavaCompile) {
