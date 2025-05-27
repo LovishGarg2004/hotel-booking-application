@@ -112,6 +112,8 @@ sonar {
     property "sonar.projectKey", "hotel-booking-application"
     property "sonar.organization", "lovishgarg2004"
     property "sonar.host.url", "https://sonarcloud.io"
+
+    property "sonar.coverage.exclusions", "**/model/**,**/dto/**"
   }
 }
 
