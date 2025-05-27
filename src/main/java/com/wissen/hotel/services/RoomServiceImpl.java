@@ -47,6 +47,10 @@ public class RoomServiceImpl implements RoomService {
                 .build();
 
         Room savedRoom = roomRepository.save(room);
+        if (savedRoom == null) {
+            throw new IllegalStateException("Failed to save room. The repository returned null.");
+        }
+
         return mapToResponse(savedRoom);
     }
 
@@ -127,7 +131,12 @@ public class RoomServiceImpl implements RoomService {
         room.getRoomAmenities().addAll(updatedAmenities);
         roomAmenityRepository.saveAll(updatedAmenities);
 
-        return mapToResponse(roomRepository.save(room));
+        Room savedRoom = roomRepository.save(room);
+        if (savedRoom == null) {
+            throw new IllegalStateException("Failed to save room. The repository returned null.");
+        }
+
+        return mapToResponse(savedRoom);
     }
 
     @Override
@@ -140,9 +149,13 @@ public class RoomServiceImpl implements RoomService {
 
     // ------------------ Helper ------------------
     private RoomResponse mapToResponse(Room room) {
-        List<String> amenities = room.getRoomAmenities() != null ?
-                room.getRoomAmenities().stream().map(roomAmenity -> roomAmenity.getAmenity().getName()).toList() :
-                Collections.emptyList();
+        if (room == null) {
+            throw new IllegalArgumentException("Room cannot be null");
+        }
+
+        List<String> amenities = room.getRoomAmenities() != null
+                ? room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList()
+                : new ArrayList<>();
 
         return RoomResponse.builder()
                 .roomId(room.getRoomId())
