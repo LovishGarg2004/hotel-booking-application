@@ -8,6 +8,7 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Entity
@@ -33,5 +34,6 @@ public class Room {
     private int totalRooms;
 
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
-    private List<RoomAmenity> roomAmenities;
+    @Builder.Default
+    private List<RoomAmenity> roomAmenities = new ArrayList<>();
 }

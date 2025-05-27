@@ -1,6 +1,7 @@
 package com.wissen.hotel.service;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.wissen.hotel.dtos.*;
@@ -14,8 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -30,9 +33,11 @@ public class HotelServiceImplTest {
 
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
-
     @InjectMocks
     private HotelServiceImpl hotelService;
+
+    @Mock
+    private ReviewService reviewService;
 
     private Hotel mockHotel;
     private UUID hotelId;
@@ -132,5 +137,114 @@ public class HotelServiceImplTest {
         verify(hotelRepository, times(1)).findAll();
         verify(roomRepository, times(1)).findAllByHotel_HotelId(mockHotel.getHotelId());
         verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1));
+    }
+
+    @Test
+    void testGetAllHotels_Success() {
+        List<Hotel> hotels = List.of(mockHotel);
+        when(hotelRepository.findAll()).thenReturn(hotels);
+
+        List<HotelResponse> responses = hotelService.getAllHotels("Test City", 0, 10);
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals(mockHotel.getName(), responses.get(0).getName());
+        verify(hotelRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testGetTopRatedHotels_Success() {
+        List<Hotel> hotels = List.of(mockHotel);
+        when(hotelRepository.findAll()).thenReturn(hotels);
+
+        List<HotelResponse> responses = hotelService.getTopRatedHotels();
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        verify(hotelRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testFindNearbyHotels_Success() {
+        mockHotel.setLatitude(BigDecimal.valueOf(12.9716));
+        mockHotel.setLongitude(BigDecimal.valueOf(77.5946));
+        List<Hotel> hotels = List.of(mockHotel);
+        when(hotelRepository.findAll()).thenReturn(hotels);
+
+        List<HotelResponse> responses = hotelService.findNearbyHotels(12.9716, 77.5946, 5);
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        verify(hotelRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testGetHotelRooms_Success() {
+        Room mockRoom = Room.builder()
+                .roomId(UUID.randomUUID())
+                .hotel(mockHotel)
+                .capacity(2)
+                .build();
+        when(hotelRepository.findById(hotelId)).thenReturn(Optional.of(mockHotel));
+        when(roomRepository.findAllByHotel_HotelId(hotelId)).thenReturn(List.of(mockRoom));
+
+        List<RoomResponse> responses = hotelService.getHotelRooms(hotelId);
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals(mockRoom.getRoomId(), responses.get(0).getRoomId());
+        verify(hotelRepository, times(1)).findById(hotelId);
+        verify(roomRepository, times(1)).findAllByHotel_HotelId(hotelId);
+    }
+
+    @Test
+    void testCheckAvailability_Success() {
+        Room mockRoom = Room.builder()
+                .roomId(UUID.randomUUID())
+                .hotel(mockHotel)
+                .capacity(2)
+                .build();
+        when(hotelRepository.findById(hotelId)).thenReturn(Optional.of(mockHotel));
+        when(roomRepository.findAllByHotel_HotelId(hotelId)).thenReturn(List.of(mockRoom));
+        when(roomAvailabilityService.isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1))).thenReturn(true);
+
+        List<RoomResponse> responses = (List<RoomResponse>) hotelService.checkAvailability(hotelId, LocalDate.now().toString(), LocalDate.now().plusDays(1).toString());
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        verify(hotelRepository, times(1)).findById(hotelId);
+        verify(roomRepository, times(1)).findAllByHotel_HotelId(hotelId);
+        verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1));
+    }
+
+    @Test
+    void testGetHotelsOwnedByCurrentUser_Success() {
+        UUID currentUserId = mockOwner.getUserId();
+
+        // Mock static method
+        try (MockedStatic<AuthUtil> mockedAuthUtil = mockStatic(AuthUtil.class)) {
+            mockedAuthUtil.when(AuthUtil::getCurrentUser).thenReturn(mockOwner);
+
+            when(hotelRepository.findAll()).thenReturn(List.of(mockHotel));
+
+            List<HotelResponse> responses = hotelService.getHotelsOwnedByCurrentUser();
+
+            assertNotNull(responses);
+            assertEquals(1, responses.size());
+            assertEquals(mockHotel.getOwner().getUserId(), currentUserId);
+            verify(hotelRepository, times(1)).findAll();
+        }
+    }
+
+    @Test
+    void testGetAverageRating_Success() {
+        ReviewResponse review1 = ReviewResponse.builder().rating(4).build();
+        ReviewResponse review2 = ReviewResponse.builder().rating(5).build();
+        when(reviewService.getReviewsByHotel(hotelId)).thenReturn(List.of(review1, review2));
+
+        double averageRating = hotelService.getAverageRating(hotelId);
+
+        assertEquals(4.5, averageRating);
+        verify(reviewService, times(1)).getReviewsByHotel(hotelId);
     }
 }
