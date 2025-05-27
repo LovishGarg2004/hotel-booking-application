@@ -29,7 +29,7 @@ public class AmenityController {
 
     @Operation(summary = "Get amenity by ID", description = "Public access")
     @GetMapping("/{id}")
-    public ResponseEntity<AmenityResponse> getAmenityById(@PathVariable UUID id) {
+    public ResponseEntity<AmenityResponse> getAmenityById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(amenityService.getAmenityById(id));
     }
 
@@ -41,13 +41,13 @@ public class AmenityController {
 
     @Operation(summary = "Update an existing amenity", description = "Admin only")
     @PutMapping("/{id}")
-    public ResponseEntity<AmenityResponse> updateAmenity(@PathVariable UUID id, @RequestBody CreateOrUpdateAmenityRequest request) {
+    public ResponseEntity<AmenityResponse> updateAmenity(@PathVariable("id") UUID id, @RequestBody CreateOrUpdateAmenityRequest request) {
         return ResponseEntity.ok(amenityService.updateAmenity(id, request));
     }
 
     @Operation(summary = "Delete an amenity", description = "Admin only")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAmenity(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteAmenity(@PathVariable("id") UUID id) {
         amenityService.deleteAmenity(id);
         return ResponseEntity.noContent().build();
     }
