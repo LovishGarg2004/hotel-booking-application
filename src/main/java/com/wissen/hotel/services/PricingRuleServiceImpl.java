@@ -1,11 +1,11 @@
 package com.wissen.hotel.services;
 
 import com.wissen.hotel.dtos.PricingRuleRequest;
+import com.wissen.hotel.exceptions.EntityNotFoundException;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.PricingRule;
 import com.wissen.hotel.repositories.HotelRepository;
 import com.wissen.hotel.repositories.PricingRuleRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
