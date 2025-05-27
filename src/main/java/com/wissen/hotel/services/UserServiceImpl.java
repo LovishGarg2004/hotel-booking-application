@@ -123,6 +123,7 @@ public class UserServiceImpl implements UserService {
                 .finalPrice(booking.getFinalPrice())
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())
+                .roomsBooked(booking.getRoomsBooked())
                 .build();
     }
 }
