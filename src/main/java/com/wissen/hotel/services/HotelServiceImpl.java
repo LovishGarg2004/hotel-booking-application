@@ -220,7 +220,7 @@ public class HotelServiceImpl implements HotelService {
         LocalDate checkInDate = LocalDate.parse(checkIn);
         LocalDate checkOutDate = LocalDate.parse(checkOut);
         List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
-        List<RoomResponse> availableRooms = rooms.stream()
+        return rooms.stream()
             .filter(room -> roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkInDate, checkOutDate))
             .map(room -> RoomResponse.builder()
                 .roomId(room.getRoomId())
@@ -234,7 +234,6 @@ public class HotelServiceImpl implements HotelService {
                     Collections.emptyList())
                 .build())
             .toList();
-        return availableRooms;
     }
 
     @Override

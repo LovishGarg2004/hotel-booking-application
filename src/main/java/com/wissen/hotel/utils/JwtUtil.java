@@ -68,4 +68,9 @@ public class JwtUtil {
                 .signWith(SignatureAlgorithm.HS512, key) // Use HS256 or HS512
                 .compact();
     }
+
+    public Object extractUsername(String token) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'extractUsername'");
+    }
 }

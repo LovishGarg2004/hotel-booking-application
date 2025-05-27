@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.wissen.hotel.utils.JwtUtil;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -29,9 +30,11 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
-
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private JwtUtil jwtUtil;
 
     @Test
     void testRegister() throws Exception {
@@ -71,11 +74,13 @@ class AuthControllerTest {
 
     @Test
     void testVerifyEmail() throws Exception {
-        String token = "dummy-token";
+        // Mock the JwtUtil to return a valid token
+        String token = "sample-verification-token";
+        when(jwtUtil.generateEmailVerificationToken("alice@example.com")).thenReturn(token);
 
-        doNothing().when(authService).verifyEmail(token);
+        doNothing().when(authService).verifyEmail(anyString());
 
-        mockMvc.perform(get("/api/auth/verify/" + token))
+        mockMvc.perform(get("/api/auth/verify/{token}", token))
                 .andExpect(status().isOk());
     }
 

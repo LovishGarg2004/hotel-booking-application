@@ -32,7 +32,6 @@ public class RoomController {
             @RequestBody CreateRoomRequest request
     ) {
         log.info("Adding room to hotel: {}", hotelId);
-        // TODO: Authenticate hotel owner or admin
         return ResponseEntity.ok(roomService.createRoom(hotelId, request));
     }
 
@@ -43,7 +42,6 @@ public class RoomController {
             @RequestBody UpdateRoomRequest request
     ) {
         log.info("Updating room: {}", id);
-        // TODO: Authenticate hotel owner or admin
         return ResponseEntity.ok(roomService.updateRoom(id, request));
     }
 
@@ -66,7 +64,6 @@ public class RoomController {
     }
 
     // Update amenities
-    //TODO: After implementing the amenity service, this endpoint will be used to update the amenities of a room
     @PutMapping("/{id}/amenities")
     public ResponseEntity<RoomResponse> updateAmenities(
             @PathVariable("id") UUID id,
