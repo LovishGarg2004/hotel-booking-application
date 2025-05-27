@@ -184,7 +184,6 @@ public class BookingServiceImpl implements BookingService {
     public List<BookingResponse> getBookingsForHotel(UUID hotelId) {
         log.info("Fetching bookings for hotel ID: {}", hotelId);
 
-        // TODO: Add authentication check to ensure hotel owner/admin access (implement as needed)
         return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
                 .map(this::mapToResponse)
                 .toList();
