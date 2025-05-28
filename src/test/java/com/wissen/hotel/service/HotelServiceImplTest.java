@@ -34,11 +34,18 @@ public class HotelServiceImplTest {
 
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
+
+    @Mock
+    private PricingEngineService pricingEngineService;
+
     @InjectMocks
     private HotelServiceImpl hotelService;
 
     @Mock
     private ReviewService reviewService;
+
+    @Mock
+    private RoomAvailabilityRepository roomAvailabilityRepository;
 
     private Hotel mockHotel;
     private UUID hotelId;
@@ -58,6 +65,14 @@ public class HotelServiceImplTest {
                 .isApproved(false)
                 .owner(mockOwner) // Set mock owner
                 .build();
+        // Inject the mock RoomAvailabilityRepository into hotelService
+        try {
+            java.lang.reflect.Field field = hotelService.getClass().getDeclaredField("roomAvailabilityRepository");
+            field.setAccessible(true);
+            field.set(hotelService, roomAvailabilityRepository);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -125,19 +140,36 @@ public class HotelServiceImplTest {
                 .roomId(UUID.randomUUID())
                 .hotel(mockHotel)
                 .capacity(3)
+                .totalRooms(5)
+                .basePrice(new BigDecimal("100.00"))
                 .build();
+
+        LocalDate checkIn = LocalDate.now();
+        LocalDate checkOut = checkIn.plusDays(2);
+        int numberOfGuests = 5;
+        int neededRooms = (int) Math.ceil((double) numberOfGuests / mockRoom.getCapacity());
 
         when(hotelRepository.findAll()).thenReturn(hotels);
         when(roomRepository.findAllByHotel_HotelId(mockHotel.getHotelId())).thenReturn(List.of(mockRoom));
-        when(roomAvailabilityService.isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1))).thenReturn(true);
+        // Simulate RoomAvailabilityRepository always returns enough rooms for all dates
+        when(roomAvailabilityRepository.findByRoom_RoomIdAndDate(any(UUID.class), any(LocalDate.class)))
+            .thenReturn(RoomAvailability.builder().availableRooms(5).build());
+        // Simulate pricing engine
+        PriceCalculationResponse priceResponse = new PriceCalculationResponse();
+        priceResponse.setFinalPrice(new BigDecimal("100.00"));
+        when(pricingEngineService.calculatePrice(mockRoom.getRoomId(), checkIn, checkOut)).thenReturn(priceResponse);
 
-        List<HotelResponse> responses = hotelService.searchHotels("Test City", LocalDate.now(), LocalDate.now().plusDays(1), 2, 0, 10);
+        List<HotelResponse> responses = hotelService.searchHotels("Test City", checkIn, checkOut, numberOfGuests, 0, 10);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
+        HotelResponse resp = responses.get(0);
+        assertEquals(mockHotel.getHotelId(), resp.getHotelId());
+        assertEquals(neededRooms, resp.getRoomsRequired());
+        assertEquals(new BigDecimal("100.00").multiply(BigDecimal.valueOf(neededRooms)), resp.getFinalPrice());
         verify(hotelRepository, times(1)).findAll();
         verify(roomRepository, times(1)).findAllByHotel_HotelId(mockHotel.getHotelId());
-        verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1));
+        verify(pricingEngineService, atLeastOnce()).calculatePrice(mockRoom.getRoomId(), checkIn, checkOut);
     }
     @Test
     void testGetAllHotels_Success() {

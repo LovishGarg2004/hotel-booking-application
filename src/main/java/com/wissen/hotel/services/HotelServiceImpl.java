@@ -5,9 +5,11 @@ import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
 import com.wissen.hotel.dtos.ReviewResponse;
 import com.wissen.hotel.dtos.RoomResponse;
+import com.wissen.hotel.dtos.PriceCalculationResponse;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.HotelRepository;
+import com.wissen.hotel.repositories.RoomAvailabilityRepository;
 import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.utils.AuthUtil;
 
@@ -16,10 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -29,8 +33,10 @@ public class HotelServiceImpl implements HotelService {
     private static final Logger logger = LoggerFactory.getLogger(HotelServiceImpl.class);
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
+    private final RoomAvailabilityRepository roomAvailabilityRepository;
     private final RoomAvailabilityService roomAvailabilityService;
     private final ReviewService reviewService;
+    private final PricingEngineService pricingEngineService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
     @Override
@@ -124,7 +130,8 @@ public class HotelServiceImpl implements HotelService {
         return mapToResponse(approved);
     }
 
-    private HotelResponse mapToResponse(Hotel hotel) {
+    private HotelResponse 
+    mapToResponse(Hotel hotel) {
         return HotelResponse.builder()
                 .hotelId(hotel.getHotelId())
                 .name(hotel.getName())
@@ -144,22 +151,62 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size) {
         return hotelRepository.findAll().stream()
-                .filter(hotel ->
-                    (city == null || hotel.getCity().equalsIgnoreCase(city))
-                )
-                .filter(hotel -> {
-                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+            .filter(hotel -> (city == null || hotel.getCity().equalsIgnoreCase(city)))
+            .map(hotel -> {
+                List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                // Sort rooms by capacity descending (largest rooms first)
+                rooms = rooms.stream().sorted((a, b) -> Integer.compare(b.getCapacity(), a.getCapacity())).toList();
 
-                    return rooms.stream()
-                            .filter(room -> room.getCapacity() >= numberOfGuests)
-                            .anyMatch(room ->
-                                    roomAvailabilityService.isRoomAvailableForRange(room.getRoomId(), checkIn, checkOut)
-                            );
-                })
-                .skip((long) page * size)
-                .limit(size)
-                .map(this::mapToResponse)
-                .toList();
+                BigDecimal minTotalPrice = null;
+                int minRoomsRequired = 0;
+                Room chosenRoom = null;
+
+                for (Room room : rooms) {
+                    int guestsLeft = numberOfGuests;
+                    int roomsRequired = 0;
+                    BigDecimal totalPrice = BigDecimal.ZERO;
+
+                    // Calculate how many rooms needed for this room type
+                    int needed = (int) Math.ceil((double) guestsLeft / room.getCapacity());
+                    int maxAvailable = Integer.MAX_VALUE;
+
+                    // Find the minimum available rooms for this room across the date range
+                    for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+                        var availability = roomAvailabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
+                        int available = (availability != null) ? availability.getAvailableRooms() : room.getTotalRooms();
+                        if (available < maxAvailable) maxAvailable = available;
+                    }
+
+                    // If not enough rooms available, skip this room
+                    if (maxAvailable < needed) continue;
+
+                    // Calculate price for needed rooms
+                    BigDecimal price = pricingEngineService.calculatePrice(room.getRoomId(), checkIn, checkOut).getFinalPrice();
+                    totalPrice = price.multiply(BigDecimal.valueOf(needed));
+                    roomsRequired = needed;
+
+                    // If this is the first valid option or cheaper than previous, select it
+                    if (minTotalPrice == null || totalPrice.compareTo(minTotalPrice) < 0) {
+                        minTotalPrice = totalPrice;
+                        minRoomsRequired = roomsRequired;
+                        chosenRoom = room;
+                    }
+                }
+
+                // If a suitable room was found, return the HotelResponse
+                if (chosenRoom != null) {
+                    HotelResponse resp = mapToResponse(hotel);
+                    resp.setRoomsRequired(minRoomsRequired);
+                    resp.setFinalPrice(minTotalPrice);
+                    return resp;
+                } else {
+                    return null; // No suitable room found for this hotel
+                }
+            })
+            .filter(Objects::nonNull)
+            .skip((long) page * size)
+            .limit(size)
+            .toList();
     }
 
 
