@@ -1,11 +1,11 @@
 package com.wissen.hotel.services;
 
 import com.wissen.hotel.dtos.PricingRuleRequest;
+import com.wissen.hotel.exceptions.EntityNotFoundException;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.PricingRule;
 import com.wissen.hotel.repositories.HotelRepository;
 import com.wissen.hotel.repositories.PricingRuleRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +26,23 @@ public class PricingRuleServiceImpl implements PricingRuleService {
         int ruleValue = request.getRuleValue();
         if ("DISCOUNT".equalsIgnoreCase(request.getRuleType().toString())) {
             ruleValue = -Math.abs(ruleValue);
+        }
+        // Uniqueness and overlap logic
+        String type = request.getRuleType().toString();
+        if (type.equals("WEEKEND") || type.equals("PEAK") || type.equals("LAST_MINUTE")) {
+            boolean exists = pricingRuleRepository.findByHotel_HotelId(hotel.getHotelId()).stream()
+                .anyMatch(r -> r.getRuleType().toString().equals(type));
+            if (exists) {
+                throw new IllegalArgumentException(type + " rule already exists for this hotel");
+            }
+        } else {
+            // For other types, check for overlapping dates
+            boolean overlap = pricingRuleRepository.findByHotel_HotelId(hotel.getHotelId()).stream()
+                .filter(r -> r.getRuleType().toString().equals(type))
+                .anyMatch(r -> !(request.getEndDate().isBefore(r.getStartDate()) || request.getStartDate().isAfter(r.getEndDate())));
+            if (overlap) {
+                throw new IllegalArgumentException(type + " rule with overlapping dates already exists for this hotel");
+            }
         }
         PricingRule rule = new PricingRule();
         rule.setHotel(hotel);
@@ -50,6 +67,23 @@ public class PricingRuleServiceImpl implements PricingRuleService {
     @Override
     public PricingRule updateRule(UUID id, PricingRuleRequest request) {
         PricingRule rule = getRuleById(id);
+        String type = request.getRuleType().toString();
+        // Uniqueness and overlap logic
+        if (type.equals("WEEKEND") || type.equals("PEAK") || type.equals("LAST_MINUTE")) {
+            boolean exists = pricingRuleRepository.findByHotel_HotelId(rule.getHotel().getHotelId()).stream()
+                .anyMatch(r -> r.getRuleType().toString().equals(type) && !r.getRuleId().equals(id));
+            if (exists) {
+                throw new IllegalArgumentException(type + " rule already exists for this hotel");
+            }
+        } else {
+            // For other types, check for overlapping dates
+            boolean overlap = pricingRuleRepository.findByHotel_HotelId(rule.getHotel().getHotelId()).stream()
+                .filter(r -> r.getRuleType().toString().equals(type) && !r.getRuleId().equals(id))
+                .anyMatch(r -> !(request.getEndDate().isBefore(r.getStartDate()) || request.getStartDate().isAfter(r.getEndDate())));
+            if (overlap) {
+                throw new IllegalArgumentException(type + " rule with overlapping dates already exists for this hotel");
+            }
+        }
         rule.setRuleType(request.getRuleType());
         rule.setRuleValue(request.getRuleValue());
         rule.setStartDate(request.getStartDate());

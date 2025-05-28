@@ -25,7 +25,6 @@ public class Image {
 
     private UUID referenceId;
 
-    @Lob
     private String imageUrl;
 
     private LocalDateTime uploadedAt;

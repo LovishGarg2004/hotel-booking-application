@@ -6,6 +6,7 @@ import com.wissen.hotel.models.Room;
 import com.wissen.hotel.models.RoomAvailability;
 import com.wissen.hotel.repositories.RoomAvailabilityRepository;
 import com.wissen.hotel.repositories.RoomRepository;
+import com.wissen.hotel.exceptions.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,8 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
 
     @Override
     public void updateInventory(UUID roomId, UpdateInventoryRequest request) {
-        Room room = roomRepository.findById(roomId).orElseThrow();
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
         RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, request.getDate());
 
         int roomsToBook = request.getRoomsToBook();

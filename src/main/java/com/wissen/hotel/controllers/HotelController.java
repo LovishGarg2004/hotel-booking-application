@@ -107,4 +107,9 @@ public class HotelController {
     public ResponseEntity<List<HotelResponse>> getHotelsOwnedByUser() {
         return ResponseEntity.ok(hotelService.getHotelsOwnedByCurrentUser());
     }
+
+    @GetMapping("/{id}/average-rating")
+    public ResponseEntity<Double> getAverageRating(@PathVariable("id") UUID hotelId) {
+        return ResponseEntity.ok(hotelService.getAverageRating(hotelId));
+    }
 }

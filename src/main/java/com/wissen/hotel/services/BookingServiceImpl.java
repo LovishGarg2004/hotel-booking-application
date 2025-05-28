@@ -11,6 +11,7 @@ import com.wissen.hotel.utils.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,7 +37,7 @@ public class BookingServiceImpl implements BookingService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
-        User user = AuthUtil.getCurrentUser(); // TODO: Replace with real authenticated user ID
+        User user = AuthUtil.getCurrentUser();
 
         validateBookingDates(request.getCheckIn(), request.getCheckOut());
 
@@ -171,18 +172,16 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public List<BookingResponse> getAllBookings(String filter) {
         log.info("Fetching all bookings for admin");
-
-        // TODO: Add authentication check to ensure admin access (implement as needed)
         return bookingRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Override
+    @Transactional
     public List<BookingResponse> getBookingsForHotel(UUID hotelId) {
         log.info("Fetching bookings for hotel ID: {}", hotelId);
 
-        // TODO: Add authentication check to ensure hotel owner/admin access (implement as needed)
         return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
                 .map(this::mapToResponse)
                 .toList();

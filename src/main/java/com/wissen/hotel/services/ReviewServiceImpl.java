@@ -11,6 +11,7 @@ import com.wissen.hotel.repositories.ReviewRepository;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.utils.AuthUtil;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
     public List<ReviewResponse> getReviewsByHotel(UUID hotelId) {
         logger.info("Fetching reviews for hotelId: {}", hotelId);
         List<Review> reviews = reviewRepository.findByHotel_HotelId(hotelId);
