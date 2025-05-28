@@ -82,7 +82,8 @@ class PricingEngineServiceImplTest {
                 LocalDate.of(2025, 6, 12)
         );
 
-        assertEquals(new BigDecimal("100.00"), response.getFinalPrice());
+        // 2 nights, no rules, so 100 * 2 = 200
+        assertEquals(new BigDecimal("200.00"), response.getFinalPrice());
         assertTrue(response.getAppliedRuleIds().isEmpty());
     }
 
@@ -99,7 +100,8 @@ class PricingEngineServiceImplTest {
                 LocalDate.of(2025, 6, 9)
         );
 
-        assertEquals(new BigDecimal("110.00"), response.getFinalPrice());
+        // 2 nights: Sat (110), Sun (110) = 220
+        assertEquals(new BigDecimal("220.00"), response.getFinalPrice());
         assertTrue(response.getAppliedRuleIds().contains(weekendRule.getRuleId()));
     }
 
