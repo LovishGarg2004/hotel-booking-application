@@ -30,6 +30,9 @@ pipeline {
         EC2_HOST = '54.210.68.146'
         EC2_USER = 'ec2-user'
         EC2_KEY = credentials('EC2_SSH_KEY')
+        
+        // SonarCloud Configuration
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
     }
 
     stages {
@@ -91,6 +94,20 @@ pipeline {
             post {
                 always {
                     junit '**/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('SonarCloud Analysis') {
+            steps {
+                withSonarQubeEnv('SonarCloud') {
+                    sh '''
+                        ./gradlew sonarqube \
+                        -Dsonar.projectKey=hotel-booking-application \
+                        -Dsonar.organization=lovishgarg2004 \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    '''
                 }
             }
         }
@@ -228,17 +245,14 @@ pipeline {
 
         stage('Deploy to EC2') {
             when {
-                expression { 
-                    def remoteBranches = sh(script: 'git branch -r', returnStdout: true).trim()
-                    return remoteBranches.contains('origin/development') || remoteBranches.contains('origin/main')
-                }
+                branch 'main'  // Only deploy to EC2 from main branch
             }
             steps {
                 script {
                     echo "Deploying to EC2 instance..."
                     
-                    // Create deployment script with proper image reference
-                    writeFile file: 'deploy-ec2.sh', text: """
+                    // Create deployment script
+                    writeFile file: 'deploy-ec2.sh', text: '''
                         #!/bin/bash
                         
                         # Stop and remove existing container
@@ -246,21 +260,21 @@ pipeline {
                         docker rm hotel-booking-container || true
                         
                         # Pull latest image
-                        docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+                        docker pull ${DOCKERHUB_REPO}:${BUILD_NUMBER}
                         
                         # Run new container
-                        docker run -d --name hotel-booking-container \\
-                            -p 8080:8080 \\
-                            -e SPRING_PROFILES_ACTIVE=prod \\
-                            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
-                            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
-                            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
-                            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
-                            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
-                            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
-                            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
-                            -e SERVER_PORT=${SERVER_PORT} \\
-                            ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+                        docker run -d --name hotel-booking-container \
+                            -p 8080:8080 \
+                            -e SPRING_PROFILES_ACTIVE=prod \
+                            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \
+                            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \
+                            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \
+                            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \
+                            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \
+                            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \
+                            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \
+                            -e SERVER_PORT=${SERVER_PORT} \
+                            ${DOCKERHUB_REPO}:${BUILD_NUMBER}
                         
                         # Wait for application to start
                         echo "Waiting for application to start..."
@@ -273,22 +287,30 @@ pipeline {
                             echo "Application failed to start. Check logs with: docker logs hotel-booking-container"
                             exit 1
                         fi
-                    """
+                    '''
                     
                     // Make script executable
                     sh 'chmod +x deploy-ec2.sh'
                     
-                    // Create directory and copy script to EC2
-                    sh """
-                        # Create directory on EC2
-                        ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/hotel-booking'
-                        
-                        # Copy script to EC2
-                        scp -i ${EC2_KEY} -o StrictHostKeyChecking=no deploy-ec2.sh ${EC2_USER}@${EC2_HOST}:~/hotel-booking/
-                        
-                        # Execute script on EC2
-                        ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} 'cd ~/hotel-booking && chmod +x deploy-ec2.sh && ./deploy-ec2.sh'
-                    """
+                    // Copy script to EC2 and execute
+                    withAWS(credentials: 'AWS_CREDENTIALS', region: env.EC2_REGION) {
+                        sh '''
+                            # First, ensure the SSH key has correct permissions
+                            chmod 600 ${EC2_KEY}
+                            
+                            # Add host key to known hosts
+                            ssh-keyscan -H 54.210.68.146 >> ~/.ssh/known_hosts
+                            
+                            # Create directory and copy script
+                            ssh -i ${EC2_KEY} -o StrictHostKeyChecking=accept-new ec2-user@54.210.68.146 'mkdir -p ~/hotel-booking'
+                            
+                            # Copy script to EC2
+                            scp -i ${EC2_KEY} -o StrictHostKeyChecking=accept-new deploy-ec2.sh ec2-user@54.210.68.146:~/hotel-booking/
+                            
+                            # Execute script on EC2
+                            ssh -i ${EC2_KEY} -o StrictHostKeyChecking=accept-new ec2-user@54.210.68.146 'cd ~/hotel-booking && chmod +x deploy-ec2.sh && ./deploy-ec2.sh'
+                        '''
+                    }
                 }
             }
         }
@@ -297,15 +319,28 @@ pipeline {
     post {
         always {
             cleanWs()
+            
+            // SonarCloud Quality Gate
+            script {
+                def qg = waitForQualityGate()
+                if (qg.status != 'OK') {
+                    error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                }
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
-            echo 'Application deployed to EC2 instance.'
-            echo "EC2 Host: ${EC2_HOST}"
+            echo 'Container is still running. You can access the application at:'
+            echo "http://localhost:${DEV_PORT}"
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To stop container: docker stop ${CONTAINER_NAME}-dev"
         }
         failure {
             echo 'Pipeline failed!'
-            echo 'Check Jenkins logs for details.'
+            echo 'Container logs are preserved for debugging.'
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To check container status: docker ps -a | grep ${CONTAINER_NAME}-dev"
+            echo "To check container resource usage: docker stats ${CONTAINER_NAME}-dev"
         }
     }
 }
