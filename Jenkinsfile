@@ -12,8 +12,12 @@ pipeline {
         stage('Debug Info') {
             steps {
                 sh '''
-                    echo "Current branch: ${BRANCH_NAME}"
-                    echo "Git branch: $(git branch --show-current)"
+                    echo "Git branch information:"
+                    git branch -a
+                    echo "Current commit:"
+                    git rev-parse HEAD
+                    echo "Remote branches:"
+                    git remote show origin
                 '''
             }
         }
@@ -91,7 +95,8 @@ pipeline {
         stage('Deploy to Development') {
             when {
                 expression { 
-                    return env.BRANCH_NAME == 'development' || env.BRANCH_NAME == 'origin/development'
+                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    return branch == 'development'
                 }
             }
             steps {
