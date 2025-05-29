@@ -272,49 +272,41 @@ pipeline {
                 }
             }
             steps {
-                script {
-            echo "Deploying to EC2 instance..."
+script {
+    echo "Deploying to EC2 instance..."
 
-            // Save the deployment script locally (optional)
-            writeFile file: 'deploy-ec2.sh', text: """#!/bin/bash
-                docker stop hotel-booking-container || true
-                docker rm hotel-booking-container || true
+    def ec2Host = EC2_HOST
+    def ec2User = EC2_USER
+    def ec2KeyPath = EC2_KEY
 
-                docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+    writeFile file: 'deploy-ec2.sh', text: """
+        #!/bin/bash
+        echo "Stopping existing container on EC2..."
+        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker stop hotel-booking-container || true && docker rm hotel-booking-container || true'
 
-                docker run -d --name hotel-booking-container \\
-                    -p 8080:8080 \\
-                    -e SPRING_PROFILES_ACTIVE=prod \\
-                    -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
-                    -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
-                    -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
-                    -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
-                    -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
-                    -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
-                    -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
-                    -e SERVER_PORT=${SERVER_PORT} \\
-                    ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+        echo "Pulling latest image on EC2..."
+        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}'
 
-                echo "Waiting for application to start..."
-                sleep 15
+        echo "Starting new container on EC2..."
+        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} '''
+            docker run -d --name hotel-booking-container \\
+            -p 8080:8080 \\
+            -e SPRING_PROFILES_ACTIVE=prod \\
+            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
+            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
+            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
+            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
+            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
+            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
+            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
+            -e SERVER_PORT=${SERVER_PORT} \\
+            ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+        '''
+    """
 
-                STATUS=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health)
-                if [ "\$STATUS" == "200" ]; then
-                    echo "Application deployed and running!"
-                else
-                    echo "Application failed to start. Check logs with: docker logs hotel-booking-container"
-                    exit 1
-                fi
-            """
-
-            // Make script executable
-            sh 'chmod +x deploy-ec2.sh'
-
-            // SSH and execute the deployment script remotely on EC2
-            sh """
-                ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY_PATH} ${EC2_USER}@${EC2_HOST} 'bash -s' < deploy-ec2.sh
-            """
-        }
+    sh 'chmod +x deploy-ec2.sh'
+    sh './deploy-ec2.sh'
+}
             }
         }
     }
