@@ -152,7 +152,8 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                try {
+                script {
+            try {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-token',
                     usernameVariable: 'DOCKERHUB_USERNAME',
@@ -167,6 +168,7 @@ pipeline {
             } catch (Exception e) {
                 echo "⚠️ Docker push failed or skipped: ${e.message}"
             }
+        }
             }
         }
 
