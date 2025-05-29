@@ -12,6 +12,13 @@ pipeline {
         DEV_DB_USERNAME = 'postgres'
         DEV_DB_PASSWORD = 'admin'
         DEV_PORT = '8081'
+        
+        // Additional Spring Boot configurations
+        SPRING_JPA_HIBERNATE_DDL_AUTO = 'update'
+        SPRING_JPA_SHOW_SQL = 'true'
+        SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT = 'org.hibernate.dialect.PostgreSQLDialect'
+        SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL = 'true'
+        SERVER_PORT = '8080'
     }
 
     stages {
