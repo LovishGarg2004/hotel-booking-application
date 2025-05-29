@@ -278,8 +278,11 @@ pipeline {
                     // Make script executable
                     sh 'chmod +x deploy-ec2.sh'
                     
-                    // Copy script to EC2 and execute
+                    // Create directory and copy script to EC2
                     sh """
+                        # Create directory on EC2
+                        ssh -i ${EC2_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} 'mkdir -p ~/hotel-booking'
+                        
                         # Copy script to EC2
                         scp -i ${EC2_KEY} -o StrictHostKeyChecking=no deploy-ec2.sh ${EC2_USER}@${EC2_HOST}:~/hotel-booking/
                         
