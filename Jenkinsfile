@@ -152,12 +152,21 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                sh '''
-                    # Skip Docker Hub push for now - using static credentials for testing
-                    echo "Docker Hub push skipped - update DOCKERHUB_PASSWORD with real credentials later."
-                    echo "Built images available locally:"
-                    docker images | grep ${DOCKERHUB_REPO} || true
-                '''
+                try {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-token',
+                    usernameVariable: 'DOCKERHUB_USERNAME',
+                    passwordVariable: 'DOCKERHUB_PASSWORD'
+                )]) {
+                    sh '''
+                        echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+                        docker tag hotel-booking-app:latest $DOCKERHUB_USERNAME/hotel-booking-app:latest
+                        docker push $DOCKERHUB_USERNAME/hotel-booking-app:latest
+                    '''
+                }
+            } catch (Exception e) {
+                echo "⚠️ Docker push failed or skipped: ${e.message}"
+            }
             }
         }
 
@@ -215,7 +224,7 @@ pipeline {
 
         stage('Deploy to Production') {
             when {
-                branch 'main'
+                branch 'development'
             }
             steps {
                 sh '''
@@ -258,7 +267,7 @@ pipeline {
 
         stage('Deploy to EC2') {
             when {
-                branch 'main'
+                branch 'development'
             }
             steps {
                 sh '''
