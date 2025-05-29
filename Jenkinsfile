@@ -19,6 +19,12 @@ pipeline {
         SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT = 'org.hibernate.dialect.PostgreSQLDialect'
         SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL = 'true'
         SERVER_PORT = '8080'
+        
+        // Debug configurations
+        SPRING_PROFILES_ACTIVE = 'dev'
+        LOGGING_LEVEL_ROOT = 'DEBUG'
+        LOGGING_LEVEL_ORG_HIBERNATE = 'DEBUG'
+        LOGGING_LEVEL_ORG_SPRINGFRAMEWORK = 'DEBUG'
     }
 
     stages {
@@ -129,28 +135,38 @@ pipeline {
                     sh """
                         docker run -d --name ${CONTAINER_NAME}-dev \
                         -p ${DEV_PORT}:8080 \
-                        -e SPRING_PROFILES_ACTIVE=dev \
+                        -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} \
                         -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \
                         -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \
                         -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \
+                        -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \
+                        -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \
+                        -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \
+                        -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \
+                        -e SERVER_PORT=${SERVER_PORT} \
+                        -e LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT} \
+                        -e LOGGING_LEVEL_ORG_HIBERNATE=${LOGGING_LEVEL_ORG_HIBERNATE} \
+                        -e LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK} \
                         ${DOCKERHUB_REPO}:${BUILD_NUMBER}
                     """
                     
                     echo "Container started. Waiting for application to initialize..."
-                    sh "sleep 30"  // Increased wait time
+                    sh "sleep 45"  // Increased wait time to 45 seconds
                     
                     echo "Container status:"
                     sh "docker ps -a | grep ${CONTAINER_NAME}-dev || true"
                     
-                    echo "Container logs:"
+                    echo "Full container logs:"
                     sh "docker logs ${CONTAINER_NAME}-dev || true"
                     
                     echo "Checking if container is running..."
                     def containerStatus = sh(script: "docker inspect -f '{{.State.Status}}' ${CONTAINER_NAME}-dev", returnStdout: true).trim()
                     if (containerStatus != "running") {
                         echo "Container is not running. Status: ${containerStatus}"
-                        echo "Last 50 lines of container logs:"
-                        sh "docker logs --tail 50 ${CONTAINER_NAME}-dev || true"
+                        echo "Last 100 lines of container logs:"
+                        sh "docker logs --tail 100 ${CONTAINER_NAME}-dev || true"
+                        echo "Container exit code:"
+                        sh "docker inspect -f '{{.State.ExitCode}}' ${CONTAINER_NAME}-dev || true"
                         error "Container failed to start properly"
                     }
                     
@@ -167,13 +183,17 @@ pipeline {
                         } catch (Exception e) {
                             retryCount++
                             if (retryCount < maxRetries) {
-                                echo "Health check failed. Retrying in 10 seconds... (Attempt ${retryCount}/${maxRetries})"
-                                sh "sleep 10"
+                                echo "Health check failed. Retrying in 15 seconds... (Attempt ${retryCount}/${maxRetries})"
+                                sh "sleep 15"  // Increased retry wait time
                                 echo "Container logs since last attempt:"
-                                sh "docker logs --since 10s ${CONTAINER_NAME}-dev || true"
+                                sh "docker logs --since 15s ${CONTAINER_NAME}-dev || true"
                             } else {
-                                echo "Health check failed after ${maxRetries} attempts. Container logs:"
+                                echo "Health check failed after ${maxRetries} attempts. Full container logs:"
                                 sh "docker logs ${CONTAINER_NAME}-dev || true"
+                                echo "Container exit code:"
+                                sh "docker inspect -f '{{.State.ExitCode}}' ${CONTAINER_NAME}-dev || true"
+                                echo "Container resource usage:"
+                                sh "docker stats --no-stream ${CONTAINER_NAME}-dev || true"
                                 error "Application failed to start properly"
                             }
                         }
@@ -218,6 +238,8 @@ pipeline {
             echo 'Pipeline failed!'
             echo 'Container logs are preserved for debugging.'
             echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To check container status: docker ps -a | grep ${CONTAINER_NAME}-dev"
+            echo "To check container resource usage: docker stats ${CONTAINER_NAME}-dev"
         }
     }
 }
