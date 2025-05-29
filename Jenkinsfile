@@ -9,22 +9,34 @@ pipeline {
     }
 
     stages {
-        stage('Clone Repo') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/LovishGarg2004/hotel-booking-application.git'
+                checkout scm
             }
         }
 
-        stage('Build JAR') {
+        stage('Build') {
             steps {
-                sh './mvnw clean package -DskipTests'
+                sh './gradlew clean build -x test'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './gradlew test'
+            }
+            post {
+                always {
+                    junit '**/build/test-results/test/*.xml'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKERHUB_REPO}")
+                    docker.build("${DOCKERHUB_REPO}:${BUILD_NUMBER}")
+                    docker.build("${DOCKERHUB_REPO}:latest")
                 }
             }
         }
@@ -33,19 +45,60 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh 'echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin'
-                    sh "docker push ${DOCKERHUB_REPO}"
+                    sh "docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
+                    sh "docker push ${DOCKERHUB_REPO}:latest"
                 }
             }
         }
 
-        stage('Run Docker Container Locally') {
+        stage('Deploy to Development') {
+            when {
+                branch 'develop'
+            }
             steps {
                 script {
-                    sh "docker stop ${CONTAINER_NAME} || true"
-                    sh "docker rm ${CONTAINER_NAME} || true"
-                    sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${DOCKERHUB_REPO}"
+                    sh "docker stop ${CONTAINER_NAME}-dev || true"
+                    sh "docker rm ${CONTAINER_NAME}-dev || true"
+                    sh "docker run -d --name ${CONTAINER_NAME}-dev \
+                        -p 8080:8080 \
+                        -e SPRING_PROFILES_ACTIVE=dev \
+                        -e DB_URL=${DEV_DB_URL} \
+                        -e DB_USERNAME=${DEV_DB_USERNAME} \
+                        -e DB_PASSWORD=${DEV_DB_PASSWORD} \
+                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
                 }
             }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    sh "docker stop ${CONTAINER_NAME}-prod || true"
+                    sh "docker rm ${CONTAINER_NAME}-prod || true"
+                    sh "docker run -d --name ${CONTAINER_NAME}-prod \
+                        -p 8080:8080 \
+                        -e SPRING_PROFILES_ACTIVE=prod \
+                        -e DB_URL=${PROD_DB_URL} \
+                        -e DB_USERNAME=${PROD_DB_USERNAME} \
+                        -e DB_PASSWORD=${PROD_DB_PASSWORD} \
+                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
