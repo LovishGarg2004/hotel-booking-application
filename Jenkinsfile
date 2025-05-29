@@ -237,8 +237,8 @@ pipeline {
                 script {
                     echo "Deploying to EC2 instance..."
                     
-                    // Create deployment script
-                    writeFile file: 'deploy-ec2.sh', text: '''
+                    // Create deployment script with proper image reference
+                    writeFile file: 'deploy-ec2.sh', text: """
                         #!/bin/bash
                         
                         # Stop and remove existing container
@@ -246,21 +246,21 @@ pipeline {
                         docker rm hotel-booking-container || true
                         
                         # Pull latest image
-                        docker pull ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                        docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
                         
                         # Run new container
-                        docker run -d --name hotel-booking-container \
-                            -p 8080:8080 \
-                            -e SPRING_PROFILES_ACTIVE=prod \
-                            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \
-                            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \
-                            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \
-                            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \
-                            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \
-                            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \
-                            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \
-                            -e SERVER_PORT=${SERVER_PORT} \
-                            ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                        docker run -d --name hotel-booking-container \\
+                            -p 8080:8080 \\
+                            -e SPRING_PROFILES_ACTIVE=prod \\
+                            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
+                            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
+                            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
+                            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
+                            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
+                            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
+                            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
+                            -e SERVER_PORT=${SERVER_PORT} \\
+                            ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
                         
                         # Wait for application to start
                         echo "Waiting for application to start..."
@@ -273,7 +273,7 @@ pipeline {
                             echo "Application failed to start. Check logs with: docker logs hotel-booking-container"
                             exit 1
                         fi
-                    '''
+                    """
                     
                     // Make script executable
                     sh 'chmod +x deploy-ec2.sh'
