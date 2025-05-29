@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'hotel-booking-app'
-        DOCKERHUB_USER = 'your-dockerhub-username'
+        DOCKERHUB_USER = 'jxshit'
         DOCKERHUB_REPO = "${DOCKERHUB_USER}/${IMAGE_NAME}"
         CONTAINER_NAME = 'hotel-booking-container'
     }
@@ -70,9 +70,11 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
-                    sh 'echo $DOCKER_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin'
-                    sh "docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
-                    sh "docker push ${DOCKERHUB_REPO}:latest"
+                    sh '''
+                        echo $DOCKER_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
+                        docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                        docker push ${DOCKERHUB_REPO}:latest
+                    '''
                 }
             }
         }
