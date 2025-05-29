@@ -103,15 +103,13 @@ pipeline {
                 script {
                     try {
                         withSonarQubeEnv('SonarCloud') {
-                            withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                                sh '''
-                                    ./gradlew sonarqube \
-                                    -Dsonar.projectKey=hotel-booking-application \
-                                    -Dsonar.organization=lovishgarg2004 \
-                                    -Dsonar.host.url=https://sonarcloud.io \
-                                    -Dsonar.login=${SONAR_TOKEN}
-                                '''
-                            }
+                            sh '''
+                                ./gradlew sonarqube \
+                                -Dsonar.projectKey=hotel-booking-application \
+                                -Dsonar.organization=lovishgarg2004 \
+                                -Dsonar.host.url=https://sonarcloud.io \
+                                -Dsonar.login=778fe2c1f277f8e05f032b7c09a76d11a619daf4
+                            '''
                         }
                     } catch (Exception e) {
                         echo "Warning: SonarCloud analysis skipped - ${e.message}"
