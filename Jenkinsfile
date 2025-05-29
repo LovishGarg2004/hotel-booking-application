@@ -120,6 +120,21 @@ pipeline {
             }
         }
 
+        stage('Quality Gate') {
+            steps {
+                script {
+                    try {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        }
+                    } catch (Exception e) {
+                        echo "Warning: Quality gate check skipped - ${e.message}"
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -277,39 +292,21 @@ pipeline {
 
     post {
         always {
-            node {
-                cleanWs()
-                
-                // SonarCloud Quality Gate
-                script {
-                    try {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
-                        }
-                    } catch (Exception e) {
-                        echo "Warning: Quality gate check skipped - ${e.message}"
-                    }
-                }
-            }
+            cleanWs()
         }
         success {
-            node {
-                echo 'Pipeline completed successfully!'
-                echo 'Container is still running. You can access the application at:'
-                echo "http://localhost:${DEV_PORT}"
-                echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
-                echo "To stop container: docker stop ${CONTAINER_NAME}-dev"
-            }
+            echo 'Pipeline completed successfully!'
+            echo 'Container is still running. You can access the application at:'
+            echo "http://localhost:${DEV_PORT}"
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To stop container: docker stop ${CONTAINER_NAME}-dev"
         }
         failure {
-            node {
-                echo 'Pipeline failed!'
-                echo 'Container logs are preserved for debugging.'
-                echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
-                echo "To check container status: docker ps -a | grep ${CONTAINER_NAME}-dev"
-                echo "To check container resource usage: docker stats ${CONTAINER_NAME}-dev"
-            }
+            echo 'Pipeline failed!'
+            echo 'Container logs are preserved for debugging.'
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To check container status: docker ps -a | grep ${CONTAINER_NAME}-dev"
+            echo "To check container resource usage: docker stats ${CONTAINER_NAME}-dev"
         }
     }
 }
