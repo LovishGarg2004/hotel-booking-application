@@ -111,8 +111,14 @@ pipeline {
                     echo "Using database URL: ${DEV_DB_URL}"
                     echo "Using port: ${DEV_PORT}"
                     
-                    sh "docker stop ${CONTAINER_NAME}-dev || true"
-                    sh "docker rm ${CONTAINER_NAME}-dev || true"
+                    // Only stop and remove if it exists
+                    sh """
+                        if docker ps -a | grep -q ${CONTAINER_NAME}-dev; then
+                            docker stop ${CONTAINER_NAME}-dev || true
+                            docker rm ${CONTAINER_NAME}-dev || true
+                        fi
+                    """
+                    
                     sh """
                         docker run -d --name ${CONTAINER_NAME}-dev \
                         -p ${DEV_PORT}:8080 \
@@ -169,13 +175,18 @@ pipeline {
 
     post {
         always {
+            // Only clean workspace, don't stop the container
             cleanWs()
         }
         success {
             echo 'Pipeline completed successfully!'
+            echo 'Container is still running. You can access the application at:'
+            echo "http://localhost:${DEV_PORT}"
         }
         failure {
             echo 'Pipeline failed!'
+            // Don't stop the container on failure, so we can check logs
+            echo 'Container logs are preserved for debugging.'
         }
     }
 }
