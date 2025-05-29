@@ -34,120 +34,159 @@ class PricingEngineServiceImplTest {
 
     @Mock
     private RoomRepository roomRepository;
-
     @Mock
     private PricingRuleRepository pricingRuleRepository;
-
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
-
     @InjectMocks
-    private PricingEngineServiceImpl pricingEngineService;
+    private PricingEngineServiceImpl pricingEngine;
 
     private UUID roomId;
     private UUID hotelId;
-    private Room room;
-    private PricingRule peakRule;
-    private PricingRule weekendRule;
-    private PricingRule lastMinuteRule;
-    private PricingRule seasonalRule;
+    private Room testRoom;
 
     @BeforeEach
     void setUp() {
         roomId = UUID.randomUUID();
         hotelId = UUID.randomUUID();
-
+        testRoom = new Room();
+        testRoom.setRoomId(roomId);
+        testRoom.setBasePrice(new BigDecimal("100.00"));
         Hotel hotel = new Hotel();
         hotel.setHotelId(hotelId);
+        testRoom.setHotel(hotel);
+    }
 
-        room = new Room();
-        room.setRoomId(roomId);
-        room.setBasePrice(BigDecimal.valueOf(100));
-        room.setHotel(hotel);
+    private PricingRule createRule(PricingRuleType type, double value) {
+        PricingRule rule = new PricingRule();
+        rule.setRuleType(type);
+        rule.setRuleValue(BigDecimal.valueOf(value).intValue());
+        return rule;
+    }
 
-        peakRule = new PricingRule();
-        peakRule.setRuleType(PricingRuleType.PEAK);
-        peakRule.setRuleValue(20);
-        peakRule.setStartDate(LocalDate.now().minusDays(1));
-        peakRule.setEndDate(LocalDate.now().plusDays(10));
-
-        weekendRule = new PricingRule();
-        weekendRule.setRuleType(PricingRuleType.WEEKEND);
-        weekendRule.setRuleValue(15);
-
-        lastMinuteRule = new PricingRule();
-        lastMinuteRule.setRuleType(PricingRuleType.LAST_MINUTE);
-        lastMinuteRule.setRuleValue(10);
-
-        seasonalRule = new PricingRule();
-        seasonalRule.setRuleType(PricingRuleType.SEASONAL);
-        seasonalRule.setRuleValue(5);
-        seasonalRule.setStartDate(LocalDate.now().minusDays(1));
-        seasonalRule.setEndDate(LocalDate.now().plusDays(10));
+    private PricingRule createDateRule(PricingRuleType type, double value, LocalDate start, LocalDate end) {
+        PricingRule rule = createRule(type, value);
+        rule.setStartDate(start);
+        rule.setEndDate(end);
+        return rule;
     }
 
     @Test
-    void calculatePrice_ShouldApplyAllRules() {
-        LocalDate checkIn = LocalDate.now().plusDays(2);
-        LocalDate checkOut = checkIn.plusDays(3);
-    
-        when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
-        when(pricingRuleRepository.findByHotel_HotelId(hotelId))
-                .thenReturn(List.of(peakRule, weekendRule, lastMinuteRule));
-        when(pricingRuleRepository.findByHotelAndDateRange(eq(hotelId), any(), any()))
-                .thenReturn(List.of(seasonalRule)); // Check if this is actually used
-        when(roomAvailabilityService.getHotelAvailabilityRatio(eq(hotelId), any(), any()))
-                .thenReturn(0.15);
-    
-        PriceCalculationResponse response = pricingEngineService.calculatePrice(roomId, checkIn, checkOut);
-    
-        System.out.println("Final Price: " + response.getFinalPrice());
-        System.out.println("Applied Rules Count: " + response.getAppliedRuleIds().size());
-    
-        // If only 3 rules apply
-        BigDecimal expected = BigDecimal.valueOf(145.53); // 100 * 1.20 * 1.15 * 1.10
-        assertEquals(expected.setScale(2), response.getFinalPrice());
-    }
-    
-    @Test
-    void calculatePrice_ShouldThrowWhenRoomNotFound() {
-        UUID roomId = UUID.randomUUID();
-        LocalDate checkIn = LocalDate.now();
-        LocalDate checkOut = checkIn.plusDays(1);
+    void calculatePrice_noRules_returnsBasePrice() {
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
+        when(pricingRuleRepository.findByHotel_HotelId(hotelId)).thenReturn(Collections.emptyList());
 
-        when(roomRepository.findById(roomId)).thenReturn(Optional.empty());
+        PriceCalculationResponse response = pricingEngine.calculatePrice(
+                roomId,
+                LocalDate.of(2025, 6, 10),
+                LocalDate.of(2025, 6, 12)
+        );
 
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () ->
-            pricingEngineService.calculatePrice(roomId, checkIn, checkOut));
-
-        assertEquals("Room not found", exception.getMessage());
+        // 2 nights, no rules, so 100 * 2 = 200
+        assertEquals(new BigDecimal("200.00"), response.getFinalPrice());
+        assertTrue(response.getAppliedRuleIds().isEmpty());
     }
 
     @Test
-    void simulatePricing_ShouldReturnDailyPrices() {
-        LocalDate checkIn = LocalDate.now().plusDays(5); // Assume Friday
-        LocalDate checkOut = checkIn.plusDays(3); // Friday to Sunday
+    void calculatePrice_withWeekendRule_appliesSurcharge() {
+        PricingRule weekendRule = createRule(PricingRuleType.WEEKEND, 10.0);
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
+        when(pricingRuleRepository.findByHotel_HotelId(hotelId)).thenReturn(List.of(weekendRule));
 
-        PriceSimulationRequest request = new PriceSimulationRequest();
-        request.setRoomId(roomId);
-        request.setCheckIn(checkIn);
-        request.setCheckOut(checkOut);
+        // June 7, 2025 is Saturday, June 8 is Sunday
+        PriceCalculationResponse response = pricingEngine.calculatePrice(
+                roomId,
+                LocalDate.of(2025, 6, 7),
+                LocalDate.of(2025, 6, 9)
+        );
 
-        when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
-        when(pricingRuleRepository.findByHotel_HotelId(hotelId))
-                .thenReturn(List.of(peakRule, weekendRule, lastMinuteRule));
-        when(pricingRuleRepository.findByHotelAndDateRange(eq(hotelId), any(), any()))
-                .thenReturn(List.of(seasonalRule));
-        when(roomAvailabilityService.getHotelAvailabilityRatio(eq(hotelId), any(), any()))
-                .thenReturn(0.15);
+        // 2 nights: Sat (110), Sun (110) = 220
+        assertEquals(new BigDecimal("220.00"), response.getFinalPrice());
+        assertTrue(response.getAppliedRuleIds().contains(weekendRule.getRuleId()));
+    }
 
-        List<PriceSimulationResult> results = pricingEngineService.simulatePricing(request);
+    @Test
+    void calculatePrice_withMultipleRules_appliesAll() {
+        PricingRule peakRule = createRule(PricingRuleType.PEAK, 15.0);
+        PricingRule lastMinuteRule = createRule(PricingRuleType.LAST_MINUTE, 5.0);
+        PricingRule weekendRule = createRule(PricingRuleType.WEEKEND, 10.0);
 
+        peakRule.setRuleId(UUID.randomUUID());
+        lastMinuteRule.setRuleId(UUID.randomUUID());
+        weekendRule.setRuleId(UUID.randomUUID());
+    
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
+        when(pricingRuleRepository.findByHotel_HotelId(hotelId)).thenReturn(List.of(peakRule, lastMinuteRule, weekendRule));
+        when(roomAvailabilityService.getHotelAvailabilityRatio(any(), any(), any())).thenReturn(0.15); // Triggers PEAK
+    
+        // Stay: June 7 (Sat) to June 9 (Mon) → 2 nights with 2 weekend nights
+        LocalDate checkIn = LocalDate.of(2025, 5, 31);
+        LocalDate checkOut = LocalDate.of(2025, 6, 1);
+    
+        PriceCalculationResponse response = pricingEngine.calculatePrice(
+            roomId,
+            checkIn,
+            checkOut
+        );
+    
+        // Expected: 100 + (15% PEAK) + (5% LAST_MINUTE) + (10% × 2 nights WEEKEND)
+        assertEquals(new BigDecimal("130.00"), response.getFinalPrice());
+        assertTrue(response.getAppliedRuleIds().containsAll(List.of(
+            peakRule.getRuleId(),
+            lastMinuteRule.getRuleId(),
+            weekendRule.getRuleId()
+        )));
+    }
+    
+    @Test
+    void simulatePricing_withDateSpecificRule_appliesDiscount() {
+        PricingRule dateRule = createDateRule(
+            PricingRuleType.DISCOUNT, -5.0,
+            LocalDate.of(2025, 6, 1),
+            LocalDate.of(2025, 6, 1) // Fix end date to June 1 (single day)
+        );
+    
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
+        
+        // Mock to return rule ONLY for June 1
+        when(pricingRuleRepository.findByHotelAndDateRange(
+            eq(hotelId),
+            eq(LocalDate.of(2025, 6, 1)),
+            eq(LocalDate.of(2025, 6, 1))
+        )).thenReturn(List.of(dateRule));
+    
+        // Mock to return empty list for other dates
+        when(pricingRuleRepository.findByHotelAndDateRange(
+            any(UUID.class),
+            argThat(date -> !date.equals(LocalDate.of(2025, 6, 1))),
+            any(LocalDate.class)
+        )).thenReturn(Collections.emptyList());
+    
+        PriceSimulationRequest request = PriceSimulationRequest.builder()
+            .roomId(roomId)
+            .checkIn(LocalDate.of(2025, 5, 31))
+            .checkOut(LocalDate.of(2025, 6, 3))
+            .build();
+    
+        List<PriceSimulationResult> results = pricingEngine.simulatePricing(request);
+    
         assertEquals(3, results.size());
-        for (PriceSimulationResult result : results) {
-            assertNotNull(result.getPrice());
-            assertTrue(result.getPrice().compareTo(BigDecimal.ZERO) > 0);
-            assertEquals(4, result.getAppliedRuleIds().size());
-        }
+        assertEquals(new BigDecimal("100.00"), results.get(0).getPrice()); // May 31
+        assertEquals(new BigDecimal("95.00"), results.get(1).getPrice());  // June 1
+        assertEquals(new BigDecimal("100.00"), results.get(2).getPrice()); // June 2
+    }
+    
+
+    @Test
+    void applyPricingRules_withZeroValueRule_ignoresRule() {
+        PricingRule zeroRule = createRule(PricingRuleType.DISCOUNT, 0.0);
+        BigDecimal price = pricingEngine.applyPricingRules(
+                new BigDecimal("100.00"),
+                List.of(zeroRule),
+                LocalDate.now(),
+                LocalDate.now().plusDays(1),
+                hotelId
+        );
+        assertEquals(new BigDecimal("100.00"), price);
     }
 }

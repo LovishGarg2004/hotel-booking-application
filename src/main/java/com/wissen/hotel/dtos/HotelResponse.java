@@ -22,4 +22,6 @@ public class HotelResponse {
     private boolean isApproved;
     private LocalDateTime createdAt;
     private UUID ownerId; // only exposing owner ID
+    private int roomsRequired; // Number of rooms required for the search request
+    private BigDecimal finalPrice; // Final price for the stay (all rooms, all days)
 }
