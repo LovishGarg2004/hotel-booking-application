@@ -32,7 +32,7 @@ pipeline {
         LOGGING_LEVEL_ORG_SPRINGFRAMEWORK = 'INFO'
         
         // EC2 Configuration
-        EC2_HOST = '54.210.68.146'
+        EC2_HOST = '3.94.114.92'
         EC2_USER = 'ec2-user'
         EC2_REGION = 'us-east-1'
         EC2_KEY = credentials('EC2_SSH_KEY')
