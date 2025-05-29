@@ -3,7 +3,7 @@ package com.wissen.hotel.controllers;
 import com.wissen.hotel.dtos.ImageResponse;
 import com.wissen.hotel.enums.ImageType;
 import com.wissen.hotel.models.Image;
-import com.wissen.hotel.services.CloudinaryService;
+import com.wissen.hotel.services.ImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Tag(name = "Image Management", description = "APIs for managing hotel and room images")
 public class ImageController {
-    private final CloudinaryService cloudinaryService;
+    private final ImageService imageService;
 
     // General upload endpoint (kept for backward compatibility)
     @PostMapping(value = "/images/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -33,8 +33,8 @@ public class ImageController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("referenceId") UUID referenceId,
             @RequestParam("type") ImageType type) throws IOException {
-        Image image = cloudinaryService.uploadImage(referenceId, type, file);
-        return ResponseEntity.ok(cloudinaryService.mapToImageResponse(image));
+        Image image = imageService.uploadImage(referenceId, type, file);
+        return ResponseEntity.ok(imageService.mapToImageResponse(image));
     }
 
     // Upload hotel image (for hotel owners/admins)
@@ -44,8 +44,8 @@ public class ImageController {
     public ResponseEntity<ImageResponse> uploadHotelImage(
             @PathVariable UUID hotelId,
             @RequestParam("file") MultipartFile file) throws IOException {
-        Image image = cloudinaryService.uploadImage(hotelId, ImageType.HOTEL, file);
-        return ResponseEntity.ok(cloudinaryService.mapToImageResponse(image));
+        Image image = imageService.uploadImage(hotelId, ImageType.HOTEL, file);
+        return ResponseEntity.ok(imageService.mapToImageResponse(image));
     }
 
     // Upload room image (for hotel owners/admins)
@@ -55,17 +55,17 @@ public class ImageController {
     public ResponseEntity<ImageResponse> uploadRoomImage(
             @PathVariable UUID roomId,
             @RequestParam("file") MultipartFile file) throws IOException {
-        Image image = cloudinaryService.uploadImage(roomId, ImageType.ROOM, file);
-        return ResponseEntity.ok(cloudinaryService.mapToImageResponse(image));
+        Image image = imageService.uploadImage(roomId, ImageType.ROOM, file);
+        return ResponseEntity.ok(imageService.mapToImageResponse(image));
     }
 
     // Get all images for a hotel (public)
     @GetMapping("/hotels/{hotelId}/images")
     @Operation(summary = "Get all images for a hotel")
     public ResponseEntity<List<ImageResponse>> getHotelImages(@PathVariable UUID hotelId) {
-        List<Image> images = cloudinaryService.getImagesByReference(hotelId, ImageType.HOTEL);
+        List<Image> images = imageService.getImagesByReference(hotelId, ImageType.HOTEL);
         return ResponseEntity.ok(images.stream()
-                .map(cloudinaryService::mapToImageResponse)
+                .map(imageService::mapToImageResponse)
                 .collect(Collectors.toList()));
     }
 
@@ -73,9 +73,9 @@ public class ImageController {
     @GetMapping("/rooms/{roomId}/images")
     @Operation(summary = "Get all images for a room")
     public ResponseEntity<List<ImageResponse>> getRoomImages(@PathVariable UUID roomId) {
-        List<Image> images = cloudinaryService.getImagesByReference(roomId, ImageType.ROOM);
+        List<Image> images = imageService.getImagesByReference(roomId, ImageType.ROOM);
         return ResponseEntity.ok(images.stream()
-                .map(cloudinaryService::mapToImageResponse)
+                .map(imageService::mapToImageResponse)
                 .collect(Collectors.toList()));
     }
 
@@ -85,9 +85,9 @@ public class ImageController {
     public ResponseEntity<List<ImageResponse>> getImagesByReference(
             @PathVariable UUID referenceId,
             @RequestParam(required = false) ImageType type) {
-        List<Image> images = cloudinaryService.getImagesByReference(referenceId, type);
+        List<Image> images = imageService.getImagesByReference(referenceId, type);
         return ResponseEntity.ok(images.stream()
-                .map(cloudinaryService::mapToImageResponse)
+                .map(imageService::mapToImageResponse)
                 .collect(Collectors.toList()));
     }
 
@@ -96,9 +96,9 @@ public class ImageController {
     @Operation(summary = "Get all images of a specific type")
     public ResponseEntity<List<ImageResponse>> getImagesByType(
             @RequestParam ImageType type) {
-        List<Image> images = cloudinaryService.getImagesByType(type);
+        List<Image> images = imageService.getImagesByType(type);
         return ResponseEntity.ok(images.stream()
-                .map(cloudinaryService::mapToImageResponse)
+                .map(imageService::mapToImageResponse)
                 .collect(Collectors.toList()));
     }
 
@@ -107,7 +107,7 @@ public class ImageController {
     @PreAuthorize("@securityService.isImageOwner(#imageId) or hasRole('ADMIN')")
     @Operation(summary = "Delete an image by ID")
     public ResponseEntity<Void> deleteImage(@PathVariable UUID imageId) throws IOException {
-        cloudinaryService.deleteImage(imageId);
+        imageService.deleteImage(imageId);
         return ResponseEntity.noContent().build();
     }
 }

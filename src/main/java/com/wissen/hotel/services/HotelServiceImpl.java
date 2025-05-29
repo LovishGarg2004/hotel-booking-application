@@ -5,13 +5,13 @@ import com.wissen.hotel.dtos.UpdateHotelRequest;
 import com.wissen.hotel.dtos.HotelResponse;
 import com.wissen.hotel.dtos.ReviewResponse;
 import com.wissen.hotel.dtos.RoomResponse;
-import com.wissen.hotel.dtos.PriceCalculationResponse;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.HotelRepository;
 import com.wissen.hotel.repositories.RoomAvailabilityRepository;
 import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.utils.AuthUtil;
+import com.wissen.hotel.dtos.AmenityResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -250,7 +250,11 @@ public class HotelServiceImpl implements HotelService {
                 .basePrice(room.getBasePrice())
                 .totalRooms(room.getTotalRooms())
                 .amenities(room.getRoomAmenities() != null ?
-                    room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList() :
+                    room.getRoomAmenities().stream().map(ra -> new AmenityResponse(
+                        ra.getAmenity().getAmenityId(),
+                        ra.getAmenity().getName(),
+                        ra.getAmenity().getDescription()
+                    )).toList() :
                     Collections.emptyList())
                 .build())
             .toList();
@@ -277,7 +281,11 @@ public class HotelServiceImpl implements HotelService {
                 .basePrice(room.getBasePrice())
                 .totalRooms(room.getTotalRooms())
                 .amenities(room.getRoomAmenities() != null ?
-                    room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList() :
+                    room.getRoomAmenities().stream().map(ra -> new AmenityResponse(
+                        ra.getAmenity().getAmenityId(),
+                        ra.getAmenity().getName(),
+                        ra.getAmenity().getDescription()
+                    )).toList() :
                     Collections.emptyList())
                 .build())
             .toList();

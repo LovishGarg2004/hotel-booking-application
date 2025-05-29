@@ -146,6 +146,17 @@ public class SecurityConfig {
                 auth.requestMatchers(HttpMethod.POST, "/api/pricing/simulate").hasAnyRole("HOTEL_OWNER", "ADMIN");
                 // ======== End Pricing Rules ========
 
+                // Amenity endpoints
+                auth.requestMatchers(HttpMethod.GET, "/api/amenities", "/api/amenities/{id}").permitAll(); // Public access for listing and viewing amenities
+                auth.requestMatchers(HttpMethod.POST, "/api/amenities").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/amenities/{id}").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/amenities/{id}").hasRole("ADMIN");
+
+                // Room Amenity endpoints
+                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*/amenities").permitAll(); // Public access to view room amenities
+                auth.requestMatchers(HttpMethod.POST, "/api/rooms/*/amenities").hasAnyRole("HOTEL_OWNER", "ADMIN"); // Only ADMIN  and HOTEL_OWNER can add
+                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/*/amenities/*").hasAnyRole("HOTEL_OWNER", "ADMIN"); // Only ADMIN and HOTEL_OWNER can remove
+
                 // Any other request must be authenticated
                 auth.anyRequest().authenticated();
             })

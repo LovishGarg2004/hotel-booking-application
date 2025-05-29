@@ -19,5 +19,5 @@ public class RoomResponse {
     private int capacity;
     private BigDecimal basePrice;
     private int totalRooms;
-    private List<String> amenities;
+    private List<AmenityResponse> amenities;
 }
