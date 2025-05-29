@@ -9,6 +9,15 @@ pipeline {
     }
 
     stages {
+        stage('Test Docker') {
+            steps {
+                script {
+                    sh 'docker --version'
+                    sh 'docker info'
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -43,8 +52,8 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh 'echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin'
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
+                    sh 'echo $DOCKER_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin'
                     sh "docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
                     sh "docker push ${DOCKERHUB_REPO}:latest"
                 }
