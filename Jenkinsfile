@@ -6,6 +6,11 @@ pipeline {
         DOCKERHUB_USER = 'jxshit'
         DOCKERHUB_REPO = "${DOCKERHUB_USER}/${IMAGE_NAME}"
         CONTAINER_NAME = 'hotel-booking-container'
+        
+        // Development environment variables
+        DEV_DB_URL = 'jdbc:postgresql://0.tcp.in.ngrok.io:19008/postgres'
+        DEV_DB_USERNAME = 'postgres'
+        DEV_DB_PASSWORD = 'postgres'
     }
 
     stages {
@@ -102,15 +107,22 @@ pipeline {
             steps {
                 script {
                     echo "Deploying to development environment..."
+                    echo "Using database URL: ${DEV_DB_URL}"
+                    
                     sh "docker stop ${CONTAINER_NAME}-dev || true"
                     sh "docker rm ${CONTAINER_NAME}-dev || true"
-                    sh "docker run -d --name ${CONTAINER_NAME}-dev \
+                    sh """
+                        docker run -d --name ${CONTAINER_NAME}-dev \
                         -p 8080:8080 \
                         -e SPRING_PROFILES_ACTIVE=dev \
-                        -e DB_URL=${DEV_DB_URL} \
-                        -e DB_USERNAME=${DEV_DB_USERNAME} \
-                        -e DB_PASSWORD=${DEV_DB_PASSWORD} \
-                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}"
+                        -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \
+                        -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \
+                        -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \
+                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                    """
+                    
+                    echo "Container started. Checking logs..."
+                    sh "docker logs ${CONTAINER_NAME}-dev"
                 }
             }
         }
