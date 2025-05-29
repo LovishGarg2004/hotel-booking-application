@@ -140,28 +140,21 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    def dockerImage = docker.build("${DOCKERHUB_REPO}:${BUILD_NUMBER}", "--platform linux/amd64 .")
-                    dockerImage.tag("latest")
-                }
+                sh """
+                    docker build --platform linux/amd64 -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
+                    docker tag ${DOCKERHUB_REPO}:${BUILD_NUMBER} ${DOCKERHUB_REPO}:latest
+                """
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    try {
-                        // Using static credentials for testing
-                        sh '''
-                            echo "${DOCKERHUB_PASSWORD}" | docker login -u ${DOCKERHUB_USER} --password-stdin
-                            docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}
-                            docker push ${DOCKERHUB_REPO}:latest
-                        '''
-                    } catch (Exception e) {
-                        echo "Warning: Docker Hub push skipped - ${e.message}"
-                        echo "Update DOCKERHUB_PASSWORD with real credentials later."
-                    }
-                }
+                sh '''
+                    # Skip Docker Hub push for now - using static credentials for testing
+                    echo "Docker Hub push skipped - update DOCKERHUB_PASSWORD with real credentials later."
+                    echo "Built images available locally:"
+                    docker images | grep ${DOCKERHUB_REPO} || true
+                '''
             }
         }
 
@@ -174,47 +167,46 @@ pipeline {
                 }
             }
             steps {
-                script {
+                sh '''
                     echo "Deploying to development environment..."
                     echo "Using database URL: ${DEV_DB_URL}"
                     echo "Using port: ${DEV_PORT}"
                     
-                    sh """
-                        # Stop and remove existing container if it exists
-                        docker stop ${CONTAINER_NAME}-dev 2>/dev/null || true
-                        docker rm ${CONTAINER_NAME}-dev 2>/dev/null || true
-                        
-                        # Run new container
-                        docker run -d --name ${CONTAINER_NAME}-dev \
-                        -p ${DEV_PORT}:8080 \
-                        -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} \
-                        -e SPRING_DATASOURCE_URL='${DEV_DB_URL}' \
-                        -e SPRING_DATASOURCE_USERNAME='${DEV_DB_USERNAME}' \
-                        -e SPRING_DATASOURCE_PASSWORD='${DEV_DB_PASSWORD}' \
-                        -e SPRING_JPA_HIBERNATE_DDL_AUTO='${SPRING_JPA_HIBERNATE_DDL_AUTO}' \
-                        -e SPRING_JPA_SHOW_SQL='${SPRING_JPA_SHOW_SQL}' \
-                        -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT='${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT}' \
-                        -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL='${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL}' \
-                        -e SERVER_PORT='${SERVER_PORT}' \
-                        -e LOGGING_LEVEL_ROOT='${LOGGING_LEVEL_ROOT}' \
-                        -e LOGGING_LEVEL_ORG_HIBERNATE='${LOGGING_LEVEL_ORG_HIBERNATE}' \
-                        -e LOGGING_LEVEL_ORG_SPRINGFRAMEWORK='${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK}' \
-                        --restart unless-stopped \
-                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}
-                        
-                        # Wait for container to start
-                        sleep 10
-                        
-                        # Check if container is running
-                        if docker ps | grep -q ${CONTAINER_NAME}-dev; then
-                            echo "Development deployment successful!"
-                        else
-                            echo "Development deployment failed!"
-                            docker logs ${CONTAINER_NAME}-dev
-                            exit 1
-                        fi
-                    """
-                }
+                    # Stop and remove existing container if it exists
+                    docker stop ${CONTAINER_NAME}-dev 2>/dev/null || true
+                    docker rm ${CONTAINER_NAME}-dev 2>/dev/null || true
+                    
+                    # Run new container
+                    docker run -d --name ${CONTAINER_NAME}-dev \
+                    -p ${DEV_PORT}:8080 \
+                    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} \
+                    -e SPRING_DATASOURCE_URL="${DEV_DB_URL}" \
+                    -e SPRING_DATASOURCE_USERNAME="${DEV_DB_USERNAME}" \
+                    -e SPRING_DATASOURCE_PASSWORD="${DEV_DB_PASSWORD}" \
+                    -e SPRING_JPA_HIBERNATE_DDL_AUTO="${SPRING_JPA_HIBERNATE_DDL_AUTO}" \
+                    -e SPRING_JPA_SHOW_SQL="${SPRING_JPA_SHOW_SQL}" \
+                    -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT="${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT}" \
+                    -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL="${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL}" \
+                    -e SERVER_PORT="${SERVER_PORT}" \
+                    -e LOGGING_LEVEL_ROOT="${LOGGING_LEVEL_ROOT}" \
+                    -e LOGGING_LEVEL_ORG_HIBERNATE="${LOGGING_LEVEL_ORG_HIBERNATE}" \
+                    -e LOGGING_LEVEL_ORG_SPRINGFRAMEWORK="${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK}" \
+                    --restart unless-stopped \
+                    ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                    
+                    # Wait for container to start
+                    sleep 10
+                    
+                    # Check if container is running
+                    if docker ps | grep -q ${CONTAINER_NAME}-dev; then
+                        echo "Development deployment successful!"
+                        echo "Application available at: http://localhost:${DEV_PORT}"
+                    else
+                        echo "Development deployment failed!"
+                        docker logs ${CONTAINER_NAME}-dev || true
+                        exit 1
+                    fi
+                '''
             }
         }
 
@@ -223,43 +215,41 @@ pipeline {
                 branch 'main'
             }
             steps {
-                script {
+                sh '''
                     echo "Deploying to production environment..."
                     
-                    sh """
-                        # Stop and remove existing container if it exists
-                        docker stop ${CONTAINER_NAME}-prod 2>/dev/null || true
-                        docker rm ${CONTAINER_NAME}-prod 2>/dev/null || true
-                        
-                        # Run new container
-                        docker run -d --name ${CONTAINER_NAME}-prod \
-                        -p 8080:8080 \
-                        -e SPRING_PROFILES_ACTIVE=prod \
-                        -e SPRING_DATASOURCE_URL='${PROD_DB_URL}' \
-                        -e SPRING_DATASOURCE_USERNAME='${PROD_DB_USERNAME}' \
-                        -e SPRING_DATASOURCE_PASSWORD='${PROD_DB_PASSWORD}' \
-                        -e SPRING_JPA_HIBERNATE_DDL_AUTO=validate \
-                        -e SPRING_JPA_SHOW_SQL=false \
-                        -e LOGGING_LEVEL_ROOT=INFO \
-                        --restart unless-stopped \
-                        ${DOCKERHUB_REPO}:${BUILD_NUMBER}
-                        
-                        # Wait for container to start
-                        sleep 15
-                        
-                        # Health check
-                        timeout 60 bash -c 'until curl -f http://localhost:8080/actuator/health 2>/dev/null; do sleep 5; done' || echo "Health check endpoint not available"
-                        
-                        # Check if container is running
-                        if docker ps | grep -q ${CONTAINER_NAME}-prod; then
-                            echo "Production deployment successful!"
-                        else
-                            echo "Production deployment failed!"
-                            docker logs ${CONTAINER_NAME}-prod
-                            exit 1
-                        fi
-                    """
-                }
+                    # Stop and remove existing container if it exists
+                    docker stop ${CONTAINER_NAME}-prod 2>/dev/null || true
+                    docker rm ${CONTAINER_NAME}-prod 2>/dev/null || true
+                    
+                    # Run new container
+                    docker run -d --name ${CONTAINER_NAME}-prod \
+                    -p 8080:8080 \
+                    -e SPRING_PROFILES_ACTIVE=prod \
+                    -e SPRING_DATASOURCE_URL="${PROD_DB_URL}" \
+                    -e SPRING_DATASOURCE_USERNAME="${PROD_DB_USERNAME}" \
+                    -e SPRING_DATASOURCE_PASSWORD="${PROD_DB_PASSWORD}" \
+                    -e SPRING_JPA_HIBERNATE_DDL_AUTO=validate \
+                    -e SPRING_JPA_SHOW_SQL=false \
+                    -e LOGGING_LEVEL_ROOT=INFO \
+                    --restart unless-stopped \
+                    ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                    
+                    # Wait for container to start
+                    sleep 15
+                    
+                    # Health check
+                    timeout 60 bash -c 'until curl -f http://localhost:8080/actuator/health 2>/dev/null; do sleep 5; done' || echo "Health check endpoint not available"
+                    
+                    # Check if container is running
+                    if docker ps | grep -q ${CONTAINER_NAME}-prod; then
+                        echo "Production deployment successful!"
+                    else
+                        echo "Production deployment failed!"
+                        docker logs ${CONTAINER_NAME}-prod || true
+                        exit 1
+                    fi
+                '''
             }
         }
 
@@ -268,11 +258,11 @@ pipeline {
                 branch 'main'
             }
             steps {
-                script {
+                sh '''
                     echo "EC2 deployment skipped - using static credentials for testing"
                     echo "Configure proper SSH keys and credentials for actual EC2 deployment"
                     echo "Simulating EC2 deployment success..."
-                }
+                '''
             }
         }
     }
@@ -282,23 +272,22 @@ pipeline {
             cleanWs()
         }
         success {
+            echo 'Pipeline completed successfully!'
             script {
-                def message = 'Pipeline completed successfully!'
                 if (env.BRANCH_NAME == 'development' || env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'feature/sonarcloud-integration') {
-                    message += "\nDevelopment app: http://localhost:${env.DEV_PORT}"
-                    message += "\nContainer logs: docker logs ${env.CONTAINER_NAME}-dev"
+                    echo "Development app: http://localhost:${env.DEV_PORT}"
+                    echo "Container logs: docker logs ${env.CONTAINER_NAME}-dev"
                 } else if (env.BRANCH_NAME == 'main') {
-                    message += "\nProduction app: http://localhost:8080"
-                    message += "\nEC2 app: http://${env.EC2_HOST}:8080"
-                    message += "\nContainer logs: docker logs ${env.CONTAINER_NAME}-prod"
+                    echo "Production app: http://localhost:8080"
+                    echo "EC2 app: http://${env.EC2_HOST}:8080"
+                    echo "Container logs: docker logs ${env.CONTAINER_NAME}-prod"
                 }
-                echo message
             }
         }
         failure {
+            echo 'Pipeline failed!'
             script {
                 def containerSuffix = (env.BRANCH_NAME == 'main') ? 'prod' : 'dev'
-                echo "Pipeline failed!"
                 echo "Check container logs: docker logs ${env.CONTAINER_NAME}-${containerSuffix}"
                 echo "Check container status: docker ps -a | grep ${env.CONTAINER_NAME}-${containerSuffix}"
                 
