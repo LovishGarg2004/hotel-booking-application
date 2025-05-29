@@ -11,6 +11,7 @@ import com.wissen.hotel.repositories.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -25,6 +26,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomAmenityRepository roomAmenityRepository;
     private final AmenityRepository amenityRepository;
     private final BookingService bookingService;
+    private final RoomAmenityService roomAmenityService;
 
     private static final String ROOM_NOT_FOUND = "Room not found";
 
@@ -153,9 +155,7 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Room cannot be null");
         }
 
-        List<String> amenities = room.getRoomAmenities() != null
-                ? room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList()
-                : new ArrayList<>();
+        List<AmenityResponse> amenities = roomAmenityService.getAmenitiesForRoom(room.getRoomId());
 
         return RoomResponse.builder()
                 .roomId(room.getRoomId())
