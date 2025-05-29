@@ -9,6 +9,15 @@ pipeline {
     }
 
     stages {
+        stage('Debug Info') {
+            steps {
+                sh '''
+                    echo "Current branch: ${BRANCH_NAME}"
+                    echo "Git branch: $(git branch --show-current)"
+                '''
+            }
+        }
+
         stage('Test Docker') {
             steps {
                 script {
@@ -81,10 +90,13 @@ pipeline {
 
         stage('Deploy to Development') {
             when {
-                branch 'development'
+                expression { 
+                    return env.BRANCH_NAME == 'development' || env.BRANCH_NAME == 'origin/development'
+                }
             }
             steps {
                 script {
+                    echo "Deploying to development environment..."
                     sh "docker stop ${CONTAINER_NAME}-dev || true"
                     sh "docker rm ${CONTAINER_NAME}-dev || true"
                     sh "docker run -d --name ${CONTAINER_NAME}-dev \
