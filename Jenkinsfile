@@ -98,8 +98,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKERHUB_REPO}:${BUILD_NUMBER}")
-                    docker.build("${DOCKERHUB_REPO}:latest")
+                    docker.build("${DOCKERHUB_REPO}:${BUILD_NUMBER}", "--platform linux/amd64 .")
+                    docker.build("${DOCKERHUB_REPO}:latest", "--platform linux/amd64 .")
                 }
             }
         }
