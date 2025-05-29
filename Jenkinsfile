@@ -151,24 +151,14 @@ pipeline {
         }
 
         stage('Push to Docker Hub') {
-            steps {
-                script {
-            try {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-token',
-                    usernameVariable: 'DOCKERHUB_USERNAME',
-                    passwordVariable: 'DOCKERHUB_PASSWORD'
-                )]) {
+             steps {
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
                     sh '''
-                        echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-                        docker tag hotel-booking-app:latest $DOCKERHUB_USERNAME/hotel-booking-app:latest
-                        docker push $DOCKERHUB_USERNAME/hotel-booking-app:latest
+                        echo $DOCKER_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
+                        docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}
+                        docker push ${DOCKERHUB_REPO}:latest
                     '''
                 }
-            } catch (Exception e) {
-                echo "⚠️ Docker push failed or skipped: ${e.message}"
-            }
-        }
             }
         }
 
