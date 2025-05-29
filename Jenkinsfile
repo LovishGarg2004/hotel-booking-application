@@ -277,7 +277,7 @@ pipeline {
 
     post {
         always {
-            node {
+            node('docker') {
                 cleanWs()
                 
                 // SonarCloud Quality Gate
@@ -294,7 +294,7 @@ pipeline {
             }
         }
         success {
-            node {
+            node('docker') {
                 echo 'Pipeline completed successfully!'
                 echo 'Container is still running. You can access the application at:'
                 echo "http://localhost:${DEV_PORT}"
@@ -303,7 +303,7 @@ pipeline {
             }
         }
         failure {
-            node {
+            node('docker') {
                 echo 'Pipeline failed!'
                 echo 'Container logs are preserved for debugging.'
                 echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
