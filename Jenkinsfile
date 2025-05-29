@@ -290,8 +290,7 @@ pipeline {
 
     post {
         always {
-            agent any
-            steps {
+            node('master') {
                 cleanWs()
             }
         }
