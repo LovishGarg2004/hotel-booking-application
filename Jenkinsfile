@@ -127,12 +127,21 @@ pipeline {
                     sh "sleep 10"  // Wait for container to start
                     
                     echo "Container status:"
-                    sh "docker ps | grep ${CONTAINER_NAME}-dev"
+                    sh "docker ps -a | grep ${CONTAINER_NAME}-dev || true"
                     
                     echo "Container logs:"
-                    sh "docker logs ${CONTAINER_NAME}-dev"
+                    sh "docker logs ${CONTAINER_NAME}-dev || true"
                     
-                    echo "Testing application health:"
+                    echo "Checking if container is running..."
+                    def containerStatus = sh(script: "docker inspect -f '{{.State.Status}}' ${CONTAINER_NAME}-dev", returnStdout: true).trim()
+                    if (containerStatus != "running") {
+                        echo "Container is not running. Status: ${containerStatus}"
+                        echo "Last 50 lines of container logs:"
+                        sh "docker logs --tail 50 ${CONTAINER_NAME}-dev || true"
+                        error "Container failed to start properly"
+                    }
+                    
+                    echo "Container is running. Testing application health..."
                     sh "curl -v http://localhost:${DEV_PORT}/actuator/health || true"
                 }
             }
