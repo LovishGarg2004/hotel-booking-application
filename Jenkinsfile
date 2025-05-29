@@ -123,8 +123,17 @@ pipeline {
                         ${DOCKERHUB_REPO}:${BUILD_NUMBER}
                     """
                     
-                    echo "Container started. Checking logs..."
+                    echo "Container started. Waiting for startup..."
+                    sh "sleep 10"  // Wait for container to start
+                    
+                    echo "Container status:"
+                    sh "docker ps | grep ${CONTAINER_NAME}-dev"
+                    
+                    echo "Container logs:"
                     sh "docker logs ${CONTAINER_NAME}-dev"
+                    
+                    echo "Testing application health:"
+                    sh "curl -v http://localhost:${DEV_PORT}/actuator/health || true"
                 }
             }
         }
