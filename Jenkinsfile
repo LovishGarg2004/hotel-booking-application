@@ -95,8 +95,8 @@ pipeline {
         stage('Deploy to Development') {
             when {
                 expression { 
-                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    return branch == 'development'
+                    def remoteBranches = sh(script: 'git branch -r', returnStdout: true).trim()
+                    return remoteBranches.contains('origin/development')
                 }
             }
             steps {
