@@ -10,7 +10,7 @@ pipeline {
         // Development environment variables
         DEV_DB_URL = 'jdbc:postgresql://0.tcp.in.ngrok.io:19008/postgres'
         DEV_DB_USERNAME = 'postgres'
-        DEV_DB_PASSWORD = 'postgres'
+        DEV_DB_PASSWORD = 'admin'
         DEV_PORT = '8081'
     }
 
