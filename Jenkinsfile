@@ -228,7 +228,10 @@ pipeline {
 
         stage('Deploy to EC2') {
             when {
-                branch 'main'  // Only deploy to EC2 from main branch
+                anyOf {
+                    branch 'main'
+                    branch 'development'
+                }
             }
             steps {
                 script {
