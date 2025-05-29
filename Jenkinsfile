@@ -12,8 +12,25 @@ pipeline {
         stage('Test Docker') {
             steps {
                 script {
-                    sh 'docker --version'
-                    sh 'docker info'
+                    try {
+                        // Check if Docker is installed
+                        sh 'docker --version'
+                        
+                        // Check Docker daemon status
+                        sh '''
+                            if ! docker info > /dev/null 2>&1; then
+                                echo "Docker daemon is not running. Please start Docker Desktop."
+                                exit 1
+                            fi
+                            echo "Docker daemon is running"
+                            docker info
+                        '''
+                    } catch (Exception e) {
+                        echo "Error: ${e.message}"
+                        echo "Please ensure Docker Desktop is running and you have proper permissions."
+                        currentBuild.result = 'FAILURE'
+                        error('Docker daemon check failed')
+                    }
                 }
             }
         }
