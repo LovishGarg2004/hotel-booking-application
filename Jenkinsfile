@@ -113,9 +113,12 @@ pipeline {
                             -Dsonar.login=$SONAR_TOKEN
                             """
                         }
+                         def qg = waitForQualityGate(abortPipeline: false)
+                         if (qg.status != 'OK') {
+                         echo "Quality gate failed but continuing the build: ${qg.status}"
+                }
                     } catch (Exception e) {
                         echo "Warning: SonarCloud analysis skipped - ${e.message}"
-                        echo "Using static token for testing. Update with real credentials later."
                     }
                 }
             }
