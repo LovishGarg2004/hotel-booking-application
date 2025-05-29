@@ -38,7 +38,7 @@ pipeline {
     stages {
         stage('Debug Info') {
             steps {
-                node {
+                node('docker') {
                     sh '''
                         echo "Git branch information:"
                         git branch -a
@@ -53,7 +53,7 @@ pipeline {
 
         stage('Test Docker') {
             steps {
-                node {
+                node('docker') {
                     script {
                         try {
                             // Check if Docker is installed
@@ -81,7 +81,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                node {
+                node('docker') {
                     checkout scm
                 }
             }
@@ -89,7 +89,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                node {
+                node('docker') {
                     sh './gradlew clean build -x test'
                 }
             }
@@ -97,7 +97,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                node {
+                node('docker') {
                     sh './gradlew test'
                 }
             }
@@ -110,7 +110,7 @@ pipeline {
 
         stage('SonarCloud Analysis') {
             steps {
-                node {
+                node('docker') {
                     withSonarQubeEnv('SonarCloud') {
                         sh '''
                             ./gradlew sonarqube \
@@ -126,7 +126,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                node {
+                node('docker') {
                     script {
                         docker.build("${DOCKERHUB_REPO}:${BUILD_NUMBER}", "--platform linux/amd64 .")
                         docker.build("${DOCKERHUB_REPO}:latest", "--platform linux/amd64 .")
@@ -137,7 +137,7 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                node {
+                node('docker') {
                     withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
                         sh '''
                             echo $DOCKER_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
@@ -157,7 +157,7 @@ pipeline {
                 }
             }
             steps {
-                node {
+                node('docker') {
                     script {
                         echo "Deploying to development environment..."
                         echo "Using database URL: ${DEV_DB_URL}"
@@ -247,7 +247,7 @@ pipeline {
                 branch 'main'
             }
             steps {
-                node {
+                node('docker') {
                     script {
                         sh "docker stop ${CONTAINER_NAME}-prod || true"
                         sh "docker rm ${CONTAINER_NAME}-prod || true"
@@ -268,7 +268,7 @@ pipeline {
                 branch 'main'  // Only deploy to EC2 from main branch
             }
             steps {
-                node {
+                node('docker') {
                     script {
                         echo "Deploying to EC2 instance..."
                         
