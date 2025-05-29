@@ -228,9 +228,9 @@ pipeline {
 
         stage('Deploy to EC2') {
             when {
-                anyOf {
-                    branch 'main'
-                    branch 'development'
+                expression { 
+                    def remoteBranches = sh(script: 'git branch -r', returnStdout: true).trim()
+                    return remoteBranches.contains('origin/development') || remoteBranches.contains('origin/main')
                 }
             }
             steps {
