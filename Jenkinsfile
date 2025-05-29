@@ -129,8 +129,8 @@ pipeline {
                         ${DOCKERHUB_REPO}:${BUILD_NUMBER}
                     """
                     
-                    echo "Container started. Waiting for startup..."
-                    sh "sleep 10"  // Wait for container to start
+                    echo "Container started. Waiting for application to initialize..."
+                    sh "sleep 30"  // Increased wait time
                     
                     echo "Container status:"
                     sh "docker ps -a | grep ${CONTAINER_NAME}-dev || true"
@@ -148,7 +148,29 @@ pipeline {
                     }
                     
                     echo "Container is running. Testing application health..."
-                    sh "curl -v http://localhost:${DEV_PORT}/actuator/health || true"
+                    def maxRetries = 5
+                    def retryCount = 0
+                    def healthCheckPassed = false
+                    
+                    while (retryCount < maxRetries && !healthCheckPassed) {
+                        try {
+                            sh "curl -v http://localhost:${DEV_PORT}/actuator/health"
+                            healthCheckPassed = true
+                            echo "Health check passed!"
+                        } catch (Exception e) {
+                            retryCount++
+                            if (retryCount < maxRetries) {
+                                echo "Health check failed. Retrying in 10 seconds... (Attempt ${retryCount}/${maxRetries})"
+                                sh "sleep 10"
+                                echo "Container logs since last attempt:"
+                                sh "docker logs --since 10s ${CONTAINER_NAME}-dev || true"
+                            } else {
+                                echo "Health check failed after ${maxRetries} attempts. Container logs:"
+                                sh "docker logs ${CONTAINER_NAME}-dev || true"
+                                error "Application failed to start properly"
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -182,11 +204,13 @@ pipeline {
             echo 'Pipeline completed successfully!'
             echo 'Container is still running. You can access the application at:'
             echo "http://localhost:${DEV_PORT}"
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
+            echo "To stop container: docker stop ${CONTAINER_NAME}-dev"
         }
         failure {
             echo 'Pipeline failed!'
-            // Don't stop the container on failure, so we can check logs
             echo 'Container logs are preserved for debugging.'
+            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
         }
     }
 }
