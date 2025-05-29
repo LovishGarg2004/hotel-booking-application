@@ -35,6 +35,7 @@ pipeline {
         EC2_HOST = '54.210.68.146'
         EC2_USER = 'ec2-user'
         EC2_REGION = 'us-east-1'
+        EC2_KEY = credentials('EC2_SSH_KEY')
         
         // Static credentials for testing (replace with actual credentials later)
         SONAR_TOKEN = '778fe2c1f277f8e05f032b7c09a76d11a619daf4'
@@ -151,6 +152,12 @@ pipeline {
         }
 
         stage('Push to Docker Hub') {
+            when {
+                expression { 
+                    def remoteBranches = sh(script: 'git branch -r', returnStdout: true).trim()
+                    return remoteBranches.contains('origin/development') || remoteBranches.contains('origin/main')
+                }
+            }
              steps {
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
                     sh '''
@@ -259,14 +266,55 @@ pipeline {
 
         stage('Deploy to EC2') {
             when {
-                branch 'development'
+               expression { 
+                    def remoteBranches = sh(script: 'git branch -r', returnStdout: true).trim()
+                    return remoteBranches.contains('origin/development') || remoteBranches.contains('origin/main')
+                }
             }
             steps {
-                sh '''
-                    echo "EC2 deployment skipped - using static credentials for testing"
-                    echo "Configure proper SSH keys and credentials for actual EC2 deployment"
-                    echo "Simulating EC2 deployment success..."
-                '''
+                script {
+            echo "Deploying to EC2 instance..."
+
+            // Save the deployment script locally (optional)
+            writeFile file: 'deploy-ec2.sh', text: """#!/bin/bash
+                docker stop hotel-booking-container || true
+                docker rm hotel-booking-container || true
+
+                docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+
+                docker run -d --name hotel-booking-container \\
+                    -p 8080:8080 \\
+                    -e SPRING_PROFILES_ACTIVE=prod \\
+                    -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
+                    -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
+                    -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
+                    -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
+                    -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
+                    -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
+                    -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
+                    -e SERVER_PORT=${SERVER_PORT} \\
+                    ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
+
+                echo "Waiting for application to start..."
+                sleep 15
+
+                STATUS=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health)
+                if [ "\$STATUS" == "200" ]; then
+                    echo "Application deployed and running!"
+                else
+                    echo "Application failed to start. Check logs with: docker logs hotel-booking-container"
+                    exit 1
+                fi
+            """
+
+            // Make script executable
+            sh 'chmod +x deploy-ec2.sh'
+
+            // SSH and execute the deployment script remotely on EC2
+            sh """
+                ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY_PATH} ${EC2_USER}@${EC2_HOST} 'bash -s' < deploy-ec2.sh
+            """
+        }
             }
         }
     }
