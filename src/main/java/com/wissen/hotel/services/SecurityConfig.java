@@ -49,8 +49,6 @@ public class SecurityConfig {
         return new JwtAuthenticationFilter(jwtUtil, userRepository);
     }
 
-
-    
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -59,7 +57,7 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -68,100 +66,115 @@ public class SecurityConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/**") // Disable CSRF only for API endpoints
+                )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> {
-                            // Public endpoints
-                            auth.requestMatchers(
-                    "/api/auth/**",
-                    "/api/pricing/calculate",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/h2-console/**"
-                ).permitAll();
-                
-                auth.requestMatchers("/test").permitAll();
-                auth.requestMatchers("/api/images/**").permitAll();
-                auth.requestMatchers("/api/hotels/*/images").permitAll();
-                auth.requestMatchers("/api/rooms/*/images").permitAll();
+                    // Public endpoints
+                    auth.requestMatchers(
+                            "/api/auth/**",
+                            "/api/pricing/calculate",
+                            "/v3/api-docs/**",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/h2-console/**").permitAll();
 
-                // Public GET hotel and room endpoints
-                auth.requestMatchers(HttpMethod.GET,
-                    "/api/hotels",
-                    "/api/hotels/search",
-                    "/api/hotels/top-rated",
-                    "/api/hotels/{id}",
-                    "/api/hotels/{id}/availability",
-                    "/api/hotels/{id}/reviews",
-                    "/api/hotels/{id}/rooms",
-                    "/api/rooms/{id}",
-                    "/api/rooms/{id}/availability",
-                    "/api/rooms/types"
-                ).permitAll();
+                    auth.requestMatchers("/test").permitAll();
+                    auth.requestMatchers("/api/images/**").permitAll();
+                    auth.requestMatchers("/api/hotels/*/images").permitAll();
+                    auth.requestMatchers("/api/rooms/*/images").permitAll();
 
-                //User Endpoints
-                auth.requestMatchers(HttpMethod.GET, "/api/users/me/bookings").authenticated();
+                    // Public GET hotel and room endpoints
+                    auth.requestMatchers(HttpMethod.GET,
+                            "/api/hotels",
+                            "/api/hotels/search",
+                            "/api/hotels/top-rated",
+                            "/api/hotels/{id}",
+                            "/api/hotels/{id}/availability",
+                            "/api/hotels/{id}/reviews",
+                            "/api/hotels/{id}/rooms",
+                            "/api/rooms/{id}",
+                            "/api/rooms/{id}/availability",
+                            "/api/rooms/types").permitAll();
 
-                // Room management
-                auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    // User Endpoints
+                    auth.requestMatchers(HttpMethod.GET, "/api/users/me/bookings").authenticated();
 
-                // Review endpoints
-                auth.requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll();
-                auth.requestMatchers(HttpMethod.POST, "/api/reviews").authenticated();
-                auth.requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated();
+                    // Room management
+                    auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
-                // Hotel endpoints
-                auth.requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/hotels/*/approve").hasRole("ADMIN");
-                auth.requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER");
+                    // Review endpoints
+                    auth.requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/reviews").authenticated();
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated();
 
-                // Room management (protected)
-                auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    // Hotel endpoints
+                    auth.requestMatchers(HttpMethod.POST, "/api/hotels").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/hotels/*/approve").hasRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.GET, "/api/hotels/owner").hasRole("HOTEL_OWNER");
 
-                // Admin-only
-                auth.requestMatchers("/api/users/admin/**").hasRole("ADMIN");
+                    // Room management (protected)
+                    auth.requestMatchers(HttpMethod.POST, "/api/rooms/hotel/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
-                // ======== Pricing Rules Authorization ========
-                // Create/Update/Delete pricing rules
-                auth.requestMatchers(HttpMethod.POST, "/api/pricing/rules").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                auth.requestMatchers(HttpMethod.DELETE, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                
-                // Get pricing rules
-                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules").hasAnyRole("ADMIN");
-                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                
-                // Hotel-specific pricing rules
-                auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/hotels/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                
-                // Price simulation
-                auth.requestMatchers(HttpMethod.POST, "/api/pricing/simulate").hasAnyRole("HOTEL_OWNER", "ADMIN");
-                // ======== End Pricing Rules ========
+                    // Admin-only
+                    auth.requestMatchers("/api/users/admin/**").hasRole("ADMIN");
 
-                // Amenity endpoints
-                auth.requestMatchers(HttpMethod.GET, "/api/amenities", "/api/amenities/{id}").permitAll(); // Public access for listing and viewing amenities
-                auth.requestMatchers(HttpMethod.POST, "/api/amenities").hasRole("ADMIN");
-                auth.requestMatchers(HttpMethod.PUT, "/api/amenities/{id}").hasRole("ADMIN");
-                auth.requestMatchers(HttpMethod.DELETE, "/api/amenities/{id}").hasRole("ADMIN");
+                    // ======== Pricing Rules Authorization ========
+                    // Create/Update/Delete pricing rules
+                    auth.requestMatchers(HttpMethod.POST, "/api/pricing/rules").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
-                // Room Amenity endpoints
-                auth.requestMatchers(HttpMethod.GET, "/api/rooms/*/amenities").permitAll(); // Public access to view room amenities
-                auth.requestMatchers(HttpMethod.POST, "/api/rooms/*/amenities").hasAnyRole("HOTEL_OWNER", "ADMIN"); // Only ADMIN  and HOTEL_OWNER can add
-                auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/*/amenities/*").hasAnyRole("HOTEL_OWNER", "ADMIN"); // Only ADMIN and HOTEL_OWNER can remove
+                    // Get pricing rules
+                    auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules").hasAnyRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/**").hasAnyRole("HOTEL_OWNER", "ADMIN");
 
-                // Any other request must be authenticated
-                auth.anyRequest().authenticated();
-            })
-            .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                    // Hotel-specific pricing rules
+                    auth.requestMatchers(HttpMethod.GET, "/api/pricing/rules/hotels/**").hasAnyRole("HOTEL_OWNER",
+                            "ADMIN");
+
+                    // Price simulation
+                    auth.requestMatchers(HttpMethod.POST, "/api/pricing/simulate").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    // ======== End Pricing Rules ========
+
+                    // Amenity endpoints
+                    auth.requestMatchers(HttpMethod.GET, "/api/amenities", "/api/amenities/{id}").permitAll(); // Public
+                                                                                                               // access
+                                                                                                               // for
+                                                                                                               // listing
+                                                                                                               // and
+                                                                                                               // viewing
+                                                                                                               // amenities
+                    auth.requestMatchers(HttpMethod.POST, "/api/amenities").hasRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.PUT, "/api/amenities/{id}").hasRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/amenities/{id}").hasRole("ADMIN");
+
+                    // Room Amenity endpoints
+                    auth.requestMatchers(HttpMethod.GET, "/api/rooms/*/amenities").permitAll(); // Public access to view
+                                                                                                // room amenities
+                    auth.requestMatchers(HttpMethod.POST, "/api/rooms/*/amenities").hasAnyRole("HOTEL_OWNER", "ADMIN"); // Only
+                                                                                                                        // ADMIN
+                                                                                                                        // and
+                                                                                                                        // HOTEL_OWNER
+                                                                                                                        // can
+                                                                                                                        // add
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/*/amenities/*").hasAnyRole("HOTEL_OWNER",
+                            "ADMIN"); // Only ADMIN and HOTEL_OWNER can remove
+
+                    // Any other request must be authenticated
+                    auth.anyRequest().authenticated();
+                })
+                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -179,13 +192,12 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user = User.builder()
-            .username(username)
-            .password(passwordEncoder().encode(password))
-            .roles("ADMIN")
-            .build();
+                .username(username)
+                .password(passwordEncoder().encode(password))
+                .roles("ADMIN")
+                .build();
 
         return new InMemoryUserDetailsManager(user);
     }
-    
 
 }
