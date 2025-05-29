@@ -11,6 +11,7 @@ pipeline {
         DEV_DB_URL = 'jdbc:postgresql://0.tcp.in.ngrok.io:19008/postgres'
         DEV_DB_USERNAME = 'postgres'
         DEV_DB_PASSWORD = 'postgres'
+        DEV_PORT = '8081'
     }
 
     stages {
@@ -108,12 +109,13 @@ pipeline {
                 script {
                     echo "Deploying to development environment..."
                     echo "Using database URL: ${DEV_DB_URL}"
+                    echo "Using port: ${DEV_PORT}"
                     
                     sh "docker stop ${CONTAINER_NAME}-dev || true"
                     sh "docker rm ${CONTAINER_NAME}-dev || true"
                     sh """
                         docker run -d --name ${CONTAINER_NAME}-dev \
-                        -p 8080:8080 \
+                        -p ${DEV_PORT}:8080 \
                         -e SPRING_PROFILES_ACTIVE=dev \
                         -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \
                         -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \
