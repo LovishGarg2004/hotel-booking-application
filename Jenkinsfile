@@ -290,21 +290,23 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            node {
+                cleanWs()
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
             echo 'Container is still running. You can access the application at:'
-            echo "http://localhost:${DEV_PORT}"
-            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
-            echo "To stop container: docker stop ${CONTAINER_NAME}-dev"
+            echo "http://localhost:${env.DEV_PORT}"
+            echo "To check container logs: docker logs ${env.CONTAINER_NAME}-dev"
+            echo "To stop container: docker stop ${env.CONTAINER_NAME}-dev"
         }
         failure {
             echo 'Pipeline failed!'
             echo 'Container logs are preserved for debugging.'
-            echo "To check container logs: docker logs ${CONTAINER_NAME}-dev"
-            echo "To check container status: docker ps -a | grep ${CONTAINER_NAME}-dev"
-            echo "To check container resource usage: docker stats ${CONTAINER_NAME}-dev"
+            echo "To check container logs: docker logs ${env.CONTAINER_NAME}-dev"
+            echo "To check container status: docker ps -a | grep ${env.CONTAINER_NAME}-dev"
+            echo "To check container resource usage: docker stats ${env.CONTAINER_NAME}-dev"
         }
     }
 }
