@@ -282,13 +282,13 @@ script {
     writeFile file: 'deploy-ec2.sh', text: """
         #!/bin/bash
         echo "Stopping existing container on EC2..."
-        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker stop hotel-booking-container || true && docker rm hotel-booking-container || true'
+        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker stop hotel-booking-container || true && docker rm hotel-booking-container || true'
 
         echo "Pulling latest image on EC2..."
-        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker pull ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}'
+        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker pull jxshit/hotel-booking-app:${BUILD_NUMBER}'
 
         echo "Starting new container on EC2..."
-        ssh -i ${ec2KeyPath} ${ec2User}@${ec2Host} '''
+        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host}'''
             docker run -d --name hotel-booking-container \\
             -p 8080:8080 \\
             -e SPRING_PROFILES_ACTIVE=prod \\
