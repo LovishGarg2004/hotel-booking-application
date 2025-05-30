@@ -280,29 +280,29 @@ script {
     def ec2KeyPath = EC2_KEY
 
     writeFile file: 'deploy-ec2.sh', text: """
-        #!/bin/bash
-        echo "Stopping existing container on EC2..."
-        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker stop hotel-booking-container || true && docker rm hotel-booking-container || true'
+#!/bin/bash
+echo "Stopping existing container on EC2..."
+ssh -o StrictHostKeyChecking=no -i \${ec2KeyPath} \${ec2User}@\${ec2Host} 'docker stop hotel-booking-container || true && docker rm hotel-booking-container || true'
 
-        echo "Pulling latest image on EC2..."
-        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host} 'docker pull jxshit/hotel-booking-app:${BUILD_NUMBER}'
+echo "Pulling latest image on EC2..."
+ssh -o StrictHostKeyChecking=no -i \${ec2KeyPath} \${ec2User}@\${ec2Host} "docker pull \${DOCKERHUB_USER}/hotel-booking-app:\${BUILD_NUMBER}"
 
-        echo "Starting new container on EC2..."
-        ssh -o StrictHostKeyChecking=no -i ${ec2KeyPath} ${ec2User}@${ec2Host}'''
-            docker run -d --name hotel-booking-container \\
-            -p 8080:8080 \\
-            -e SPRING_PROFILES_ACTIVE=prod \\
-            -e SPRING_DATASOURCE_URL=${DEV_DB_URL} \\
-            -e SPRING_DATASOURCE_USERNAME=${DEV_DB_USERNAME} \\
-            -e SPRING_DATASOURCE_PASSWORD=${DEV_DB_PASSWORD} \\
-            -e SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
-            -e SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL} \\
-            -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
-            -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
-            -e SERVER_PORT=${SERVER_PORT} \\
-            ${DOCKERHUB_USER}/hotel-booking-app:${BUILD_NUMBER}
-        '''
-    """
+echo "Starting new container on EC2..."
+ssh -o StrictHostKeyChecking=no -i \${ec2KeyPath} \${ec2User}@\${ec2Host} bash -c "'
+docker run -d --name hotel-booking-container \\
+    -p 8080:8080 \\
+    -e SPRING_PROFILES_ACTIVE=prod \\
+    -e SPRING_DATASOURCE_URL=\${DEV_DB_URL} \\
+    -e SPRING_DATASOURCE_USERNAME=\${DEV_DB_USERNAME} \\
+    -e SPRING_DATASOURCE_PASSWORD=\${DEV_DB_PASSWORD} \\
+    -e SPRING_JPA_HIBERNATE_DDL_AUTO=\${SPRING_JPA_HIBERNATE_DDL_AUTO} \\
+    -e SPRING_JPA_SHOW_SQL=\${SPRING_JPA_SHOW_SQL} \\
+    -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=\${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT} \\
+    -e SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=\${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL} \\
+    -e SERVER_PORT=\${SERVER_PORT} \\
+    \${DOCKERHUB_USER}/hotel-booking-app:\${BUILD_NUMBER}
+'"
+"""
 
     sh 'chmod +x deploy-ec2.sh'
     sh './deploy-ec2.sh'
