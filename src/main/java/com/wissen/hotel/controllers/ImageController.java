@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,7 +26,6 @@ public class ImageController {
 
     // General upload endpoint (kept for backward compatibility)
     @PostMapping(value = "/images/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Upload an image with reference ID and type")
     public ResponseEntity<ImageResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
@@ -39,7 +37,6 @@ public class ImageController {
 
     // Upload hotel image (for hotel owners/admins)
     @PostMapping(value = "/hotels/{hotelId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@securityService.isHotelOwner(#hotelId) or hasRole('ADMIN')")
     @Operation(summary = "Upload an image for a hotel")
     public ResponseEntity<ImageResponse> uploadHotelImage(
             @PathVariable UUID hotelId,
@@ -50,7 +47,6 @@ public class ImageController {
 
     // Upload room image (for hotel owners/admins)
     @PostMapping(value = "/rooms/{roomId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@securityService.isRoomOwner(#roomId) or hasRole('ADMIN')")
     @Operation(summary = "Upload an image for a room")
     public ResponseEntity<ImageResponse> uploadRoomImage(
             @PathVariable UUID roomId,
@@ -104,7 +100,6 @@ public class ImageController {
 
     // Delete an image (owner or admin)
     @DeleteMapping("/images/{imageId}")
-    @PreAuthorize("@securityService.isImageOwner(#imageId) or hasRole('ADMIN')")
     @Operation(summary = "Delete an image by ID")
     public ResponseEntity<Void> deleteImage(@PathVariable UUID imageId) throws IOException {
         imageService.deleteImage(imageId);

@@ -170,6 +170,12 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.DELETE, "/api/rooms/*/amenities/*").hasAnyRole("HOTEL_OWNER",
                             "ADMIN"); // Only ADMIN and HOTEL_OWNER can remove
 
+                    // Image endpoints
+                    auth.requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated();
+                    auth.requestMatchers(HttpMethod.POST, "/api/hotels/*/images").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.POST, "/api/rooms/*/images").hasAnyRole("HOTEL_OWNER", "ADMIN");
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/images/*").hasAnyRole("HOTEL_OWNER", "ADMIN");
+
                     // Any other request must be authenticated
                     auth.anyRequest().authenticated();
                 })

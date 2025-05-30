@@ -33,62 +33,70 @@ public class PricingEngineServiceImpl implements PricingEngineService {
 
     @Override
     public PriceCalculationResponse calculatePrice(UUID roomId, LocalDate checkIn, LocalDate checkOut) {
-        Room room = roomRepository.findById(roomId)
-            .orElseThrow(() -> new EntityNotFoundException("Room not found"));
-        BigDecimal basePrice = room.getBasePrice();
-        UUID hotelId = room.getHotel().getHotelId();
-        // Fetch rules: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
-        List<PricingRule> dateAgnosticRules = pricingRuleRepository.findByHotel_HotelId(hotelId).stream()
-            .filter(rule -> rule.getRuleType() == PricingRuleType.WEEKEND || rule.getRuleType() == PricingRuleType.PEAK || rule.getRuleType() == PricingRuleType.LAST_MINUTE)
-            .toList();
-        List<PricingRule> dateSpecificRules = pricingRuleRepository.findByHotelAndDateRange(hotelId, checkIn, checkOut).stream()
-            .filter(rule -> rule.getRuleType() != PricingRuleType.WEEKEND && rule.getRuleType() != PricingRuleType.PEAK && rule.getRuleType() != PricingRuleType.LAST_MINUTE)
-            .toList();
-        List<PricingRule> rules = new ArrayList<>();
-        rules.addAll(dateAgnosticRules);
-        rules.addAll(dateSpecificRules);
-
-        // Apply all applicable percentage increases
-        BigDecimal finalPrice = applyPricingRules(basePrice, rules, checkIn, checkOut, hotelId);
-
-        List<UUID> ruleIds = rules.stream().map(PricingRule::getRuleId).toList();
-        PriceCalculationResponse response = new PriceCalculationResponse();
-        response.setRoomId(roomId);
-        response.setCheckIn(checkIn);
-        response.setCheckOut(checkOut);
-        response.setBasePrice(basePrice);
-        response.setFinalPrice(finalPrice);
-        response.setAppliedRuleIds(ruleIds);
-        return response;
-    }
-
-    @Override
-    public List<PriceSimulationResult> simulatePricing(PriceSimulationRequest request) {
-        Room room = roomRepository.findById(request.getRoomId())
-            .orElseThrow(() -> new EntityNotFoundException("Room not found"));
-        UUID hotelId = room.getHotel().getHotelId();
-        List<PriceSimulationResult> results = new ArrayList<>();
-        for (LocalDate date = request.getCheckIn(); !date.isAfter(request.getCheckOut().minusDays(1)); date = date.plusDays(1)) {
-            // Fetch rules for this date: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
+        try {
+            Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found"));
+            BigDecimal basePrice = room.getBasePrice();
+            UUID hotelId = room.getHotel().getHotelId();
+            // Fetch rules: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
             List<PricingRule> dateAgnosticRules = pricingRuleRepository.findByHotel_HotelId(hotelId).stream()
                 .filter(rule -> rule.getRuleType() == PricingRuleType.WEEKEND || rule.getRuleType() == PricingRuleType.PEAK || rule.getRuleType() == PricingRuleType.LAST_MINUTE)
                 .toList();
-            List<PricingRule> dateSpecificRules = pricingRuleRepository.findByHotelAndDateRange(hotelId, date, date).stream()
+            List<PricingRule> dateSpecificRules = pricingRuleRepository.findByHotelAndDateRange(hotelId, checkIn, checkOut).stream()
                 .filter(rule -> rule.getRuleType() != PricingRuleType.WEEKEND && rule.getRuleType() != PricingRuleType.PEAK && rule.getRuleType() != PricingRuleType.LAST_MINUTE)
                 .toList();
             List<PricingRule> rules = new ArrayList<>();
             rules.addAll(dateAgnosticRules);
             rules.addAll(dateSpecificRules);
 
-            BigDecimal price = applyPricingRules(room.getBasePrice(), rules, date, date.plusDays(1), hotelId);
+            // Apply all applicable percentage increases
+            BigDecimal finalPrice = applyPricingRules(basePrice, rules, checkIn, checkOut, hotelId);
+
             List<UUID> ruleIds = rules.stream().map(PricingRule::getRuleId).toList();
-            PriceSimulationResult result = new PriceSimulationResult();
-            result.setDate(date);
-            result.setPrice(price);
-            result.setAppliedRuleIds(ruleIds);
-            results.add(result);
+            PriceCalculationResponse response = new PriceCalculationResponse();
+            response.setRoomId(roomId);
+            response.setCheckIn(checkIn);
+            response.setCheckOut(checkOut);
+            response.setBasePrice(basePrice);
+            response.setFinalPrice(finalPrice);
+            response.setAppliedRuleIds(ruleIds);
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate price. Please try again later.", e);
         }
-        return results;
+    }
+
+    @Override
+    public List<PriceSimulationResult> simulatePricing(PriceSimulationRequest request) {
+        try {
+            Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new EntityNotFoundException("Room not found"));
+            UUID hotelId = room.getHotel().getHotelId();
+            List<PriceSimulationResult> results = new ArrayList<>();
+            for (LocalDate date = request.getCheckIn(); !date.isAfter(request.getCheckOut().minusDays(1)); date = date.plusDays(1)) {
+                // Fetch rules for this date: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
+                List<PricingRule> dateAgnosticRules = pricingRuleRepository.findByHotel_HotelId(hotelId).stream()
+                    .filter(rule -> rule.getRuleType() == PricingRuleType.WEEKEND || rule.getRuleType() == PricingRuleType.PEAK || rule.getRuleType() == PricingRuleType.LAST_MINUTE)
+                    .toList();
+                List<PricingRule> dateSpecificRules = pricingRuleRepository.findByHotelAndDateRange(hotelId, date, date).stream()
+                    .filter(rule -> rule.getRuleType() != PricingRuleType.WEEKEND && rule.getRuleType() != PricingRuleType.PEAK && rule.getRuleType() != PricingRuleType.LAST_MINUTE)
+                    .toList();
+                List<PricingRule> rules = new ArrayList<>();
+                rules.addAll(dateAgnosticRules);
+                rules.addAll(dateSpecificRules);
+
+                BigDecimal price = applyPricingRules(room.getBasePrice(), rules, date, date.plusDays(1), hotelId);
+                List<UUID> ruleIds = rules.stream().map(PricingRule::getRuleId).toList();
+                PriceSimulationResult result = new PriceSimulationResult();
+                result.setDate(date);
+                result.setPrice(price);
+                result.setAppliedRuleIds(ruleIds);
+                results.add(result);
+            }
+            return results;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to simulate pricing. Please try again later.", e);
+        }
     }
 
     public BigDecimal applyPricingRules(

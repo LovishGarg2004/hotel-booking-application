@@ -27,33 +27,45 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
 
     @Override
     public RoomAmenityResponse addAmenityToRoom(UUID roomId, UUID amenityId) {
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new EntityNotFoundException("Room not found"));
-        Amenity amenity = amenityRepository.findById(amenityId).orElseThrow(() -> new EntityNotFoundException("Amenity not found"));
-        RoomAmenity roomAmenity = RoomAmenity.builder()
-            .room(room)
-            .amenity(amenity)
-            .build();
-        return mapToResponse(roomAmenityRepository.save(roomAmenity));
+        try {
+            Room room = roomRepository.findById(roomId).orElseThrow(() -> new EntityNotFoundException("Room not found"));
+            Amenity amenity = amenityRepository.findById(amenityId).orElseThrow(() -> new EntityNotFoundException("Amenity not found"));
+            RoomAmenity roomAmenity = RoomAmenity.builder()
+                .room(room)
+                .amenity(amenity)
+                .build();
+            return mapToResponse(roomAmenityRepository.save(roomAmenity));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add amenity to room. Please try again later.", e);
+        }
     }
 
     @Override
     public void removeAmenityFromRoom(UUID roomId, UUID amenityId) {
-        RoomAmenity roomAmenity = roomAmenityRepository.findByRoom_RoomIdAndAmenity_AmenityId(roomId, amenityId)
-            .orElseThrow(() -> new EntityNotFoundException("Amenity not assigned to room"));
-        roomAmenityRepository.delete(roomAmenity);
+        try {
+            RoomAmenity roomAmenity = roomAmenityRepository.findByRoom_RoomIdAndAmenity_AmenityId(roomId, amenityId)
+                .orElseThrow(() -> new EntityNotFoundException("Amenity not assigned to room"));
+            roomAmenityRepository.delete(roomAmenity);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to remove amenity from room. Please try again later.", e);
+        }
     }
 
     @Override
     @Transactional
     public List<AmenityResponse> getAmenitiesForRoom(UUID roomId) {
-        return roomAmenityRepository.findByRoom_RoomId(roomId).stream()
-            .map(ra -> new AmenityResponse(
-                ra.getAmenity().getAmenityId(),
-                ra.getAmenity().getName(),
-                ra.getAmenity().getDescription()
-            ))
-            .distinct()
-            .toList();
+        try {
+            return roomAmenityRepository.findByRoom_RoomId(roomId).stream()
+                .map(ra -> new AmenityResponse(
+                    ra.getAmenity().getAmenityId(),
+                    ra.getAmenity().getName(),
+                    ra.getAmenity().getDescription()
+                ))
+                .distinct()
+                .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve amenities for room. Please try again later.", e);
+        }
     }
 
     private RoomAmenityResponse mapToResponse(RoomAmenity roomAmenity) {

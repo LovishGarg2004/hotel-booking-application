@@ -43,48 +43,52 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void register(RegisterRequest request) {
-        logger.info("Registering user with email: {}", request.getEmail());
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            logger.error("Email already in use: {}", request.getEmail());
-            throw new EmailAlreadyInUseException("Email already in use");
-        }
-        if (userRepository.findByPhone(request.getPhone()).isPresent()) {
-            logger.error("Phone number already in use: {}", request.getPhone());
-            throw new PhoneAlreadyInUseException("Phone number already in use");
-        }
-
-        User user = new User();
-        System.out.println("Request Object: " + request);
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(UserRole.valueOf(request.getRole().toString().toUpperCase()));
-        user.setPhone(request.getPhone());
-        user.setDob(request.getDob());
-        user.setCreatedAt(LocalDateTime.now());
-        user.setEmailVerified(false);
-
-        String token = jwtUtil.generateEmailVerificationToken(user.getEmail());
-        emailSender.sendVerificationEmail(user.getEmail(), token);
-        userRepository.save(user);
-        logger.info("User registered successfully with email: {}", request.getEmail());
-        
-        // Send welcome email if the user is a hotel owner
-        if (user.getRole() == UserRole.HOTEL_OWNER) {
-            try {
-                emailSender.sendWelcomeEmail(user.getEmail(), user.getName());
-                logger.info("Welcome email sent to hotel owner: {}", user.getEmail());
-            } catch (Exception e) {
-                logger.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage(), e);
-                // Continue with registration even if welcome email fails
+        try {
+            logger.info("Registering user with email: {}", request.getEmail());
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                logger.error("Email already in use: {}", request.getEmail());
+                throw new EmailAlreadyInUseException("Email already in use");
             }
+            if (userRepository.findByPhone(request.getPhone()).isPresent()) {
+                logger.error("Phone number already in use: {}", request.getPhone());
+                throw new PhoneAlreadyInUseException("Phone number already in use");
+            }
+
+            User user = new User();
+            System.out.println("Request Object: " + request);
+            user.setName(request.getName());
+            user.setEmail(request.getEmail());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setRole(UserRole.valueOf(request.getRole().toString().toUpperCase()));
+            user.setPhone(request.getPhone());
+            user.setDob(request.getDob());
+            user.setCreatedAt(LocalDateTime.now());
+            user.setEmailVerified(false);
+
+            String token = jwtUtil.generateEmailVerificationToken(user.getEmail());
+            emailSender.sendVerificationEmail(user.getEmail(), token);
+            userRepository.save(user);
+            logger.info("User registered successfully with email: {}", request.getEmail());
+            
+            // Send welcome email if the user is a hotel owner
+            if (user.getRole() == UserRole.HOTEL_OWNER) {
+                try {
+                    emailSender.sendWelcomeEmail(user.getEmail(), user.getName());
+                    logger.info("Welcome email sent to hotel owner: {}", user.getEmail());
+                } catch (Exception e) {
+                    logger.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage(), e);
+                    // Continue with registration even if welcome email fails
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Registration failed. Please try again later.", e);
         }
     }
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        logger.info("Attempting login for email: {}", request.getEmail());
         try {
+            logger.info("Attempting login for email: {}", request.getEmail());
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> {
                         logger.error("User not found with email: {}", request.getEmail());
@@ -111,41 +115,44 @@ public class AuthServiceImpl implements AuthService {
             return new LoginResponse(token, user.getRole().toString());
             
         } catch (Exception e) {
-            logger.error("Error during login for email {}: {}", request.getEmail(), e.getMessage(), e);
-            throw e; // Re-throw the exception to be handled by the global exception handler
+            throw new RuntimeException("Login failed. Please check your credentials and try again.", e);
         }
     }
 
     @Override
     public void verifyEmail(String token) {
-        logger.info("Verifying email with token: {}", token);
-    
-        // Decode the token to extract the email
-        String email = jwtUtil.extractEmail(token);
-        logger.debug("Extracted email from token: {}", email);
-    
-        // Find the user by email
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-    
-        logger.info("User found for email: {}", email);
-    
-        // Check if the email is already verified
-        if (user.isEmailVerified()) {
-            logger.warn("Email is already verified for user: {}", email);
-            throw new EmailAlreadyVerifiedException("Email is already verified.");
+        try {
+            logger.info("Verifying email with token: {}", token);
+        
+            // Decode the token to extract the email
+            String email = jwtUtil.extractEmail(token);
+            logger.debug("Extracted email from token: {}", email);
+        
+            // Find the user by email
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+        
+            logger.info("User found for email: {}", email);
+        
+            // Check if the email is already verified
+            if (user.isEmailVerified()) {
+                logger.warn("Email is already verified for user: {}", email);
+                throw new EmailAlreadyVerifiedException("Email is already verified.");
+            }
+            //Here add the logic to verify the email
+            // emailSender.sendVerificationEmail(email, token);
+
+
+            //Send a verification email or update the user status in the database
+                
+            // Mark the email as verified
+            user.setEmailVerified(true);
+            userRepository.save(user);
+        
+            logger.info("Email verified successfully for user: {}", email);
+        } catch (Exception e) {
+            throw new RuntimeException("Email verification failed. Please try again later.", e);
         }
-        //Here add the logic to verify the email
-        // emailSender.sendVerificationEmail(email, token);
-
-
-        //Send a verification email or update the user status in the database
-            
-        // Mark the email as verified
-        user.setEmailVerified(true);
-        userRepository.save(user);
-    
-        logger.info("Email verified successfully for user: {}", email);
     }
 
     @Override
@@ -156,28 +163,32 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void resetPassword(String token, String newPassword) {
-        logger.info("Resetting password with token: {}", token);
-    
-        // Decode the token to extract the email
-        String email = jwtUtil.extractEmail(token);
-        logger.debug("Extracted email from token: {}", email);
-    
-        // Find the user by email
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-    
-        logger.info("User found for email: {}", email);
-    
-        // Validate the new password (optional, based on your requirements)
-        if (newPassword == null || newPassword.isEmpty()) {
-            logger.error("New password is invalid for email: {}", email);
-            throw new IllegalArgumentException("New password cannot be null or empty");
+        try {
+            logger.info("Resetting password with token: {}", token);
+        
+            // Decode the token to extract the email
+            String email = jwtUtil.extractEmail(token);
+            logger.debug("Extracted email from token: {}", email);
+        
+            // Find the user by email
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+        
+            logger.info("User found for email: {}", email);
+        
+            // Validate the new password (optional, based on your requirements)
+            if (newPassword == null || newPassword.isEmpty()) {
+                logger.error("New password is invalid for email: {}", email);
+                throw new IllegalArgumentException("New password cannot be null or empty");
+            }
+            // Encode the new password and update the user
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+        
+            logger.info("Password reset successfully for user: {}", email);
+        } catch (Exception e) {
+            throw new RuntimeException("Password reset failed. Please try again later.", e);
         }
-        // Encode the new password and update the user
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-    
-        logger.info("Password reset successfully for user: {}", email);
     }
 }
 

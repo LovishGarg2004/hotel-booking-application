@@ -30,86 +30,121 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getCurrentUser() {
-        logger.info("Fetching current user");
-        User user = AuthUtil.getCurrentUser();
-        logger.info("Current user fetched successfully: {}", user.getEmail());
-        return UserResponse.from(user);
+        try {
+            logger.info("Fetching current user");
+            User user = AuthUtil.getCurrentUser();
+            logger.info("Current user fetched successfully: {}", user.getEmail());
+            return UserResponse.from(user);
+        } catch (Exception e) {
+            logger.error("Error fetching current user: {}", e.getMessage());
+            throw new RuntimeException("Unable to fetch current user. Please login again.");
+        }
     }
 
     @Override
     public UserResponse updateCurrentUser(UpdateUserRequest request) {
-        logger.info("Updating current user");
-        User user = AuthUtil.getCurrentUser();
+        try {
+            logger.info("Updating current user");
+            User user = AuthUtil.getCurrentUser();
 
-        user.setName(request.getName());
-        user.setPhone(request.getPhone());
-        user.setDob(request.getDob());
+            user.setName(request.getName());
+            user.setPhone(request.getPhone());
+            user.setDob(request.getDob());
 
-        logger.info("User updated successfully: {}", user.getEmail());
-        return UserResponse.from(userRepository.save(user));
+            logger.info("User updated successfully: {}", user.getEmail());
+            return UserResponse.from(userRepository.save(user));
+        } catch (Exception e) {
+            logger.error("Error updating current user: {}", e.getMessage());
+            throw new RuntimeException("Unable to update user profile. Please try again later.");
+        }
     }
 
     @Override
     @Transactional
     public List<BookingResponse> getCurrentUserBookings() {
-        logger.info("Fetching bookings for current user");
+        try {
+            logger.info("Fetching bookings for current user");
 
-        // Step 1: Get the current authenticated user
-        User currentUser = AuthUtil.getCurrentUser();
+            // Step 1: Get the current authenticated user
+            User currentUser = AuthUtil.getCurrentUser();
 
-        // Step 2: Fetch all bookings made by the user
-        List<Booking> bookings = bookingRepository.findAllByUser_UserId(currentUser.getUserId());
+            // Step 2: Fetch all bookings made by the user
+            List<Booking> bookings = bookingRepository.findAllByUser_UserId(currentUser.getUserId());
 
-        // Step 3: Map to DTOs
-        List<BookingResponse> responses = bookings.stream()
-            .map(this::mapToResponse)
-            .collect(Collectors.toList());
+            // Step 3: Map to DTOs
+            List<BookingResponse> responses = bookings.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
 
-        logger.info("Fetched {} bookings for user: {}", responses.size(), currentUser.getEmail());
-        return responses;
+            logger.info("Fetched {} bookings for user: {}", responses.size(), currentUser.getEmail());
+            return responses;
+        } catch (Exception e) {
+            logger.error("Error fetching bookings for current user: {}", e.getMessage());
+            throw new RuntimeException("Unable to fetch your bookings. Please try again later.");
+        }
     }
 
     @Override
     public UserResponse getUserById(String id) {
-        logger.info("Fetching user by ID: {}", id);
-        User user = userRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> {
-                    logger.error("User not found with ID: {}", id);
-                    return new RuntimeException("User not found");
-                });
-        logger.info("User fetched successfully: {}", user.getEmail());
-        return UserResponse.from(user);
+        try {
+            logger.info("Fetching user by ID: {}", id);
+            User user = userRepository.findById(UUID.fromString(id))
+                    .orElseThrow(() -> {
+                        logger.error("User not found with ID: {}", id);
+                        return new RuntimeException("User not found with the provided ID.");
+                    });
+            logger.info("User fetched successfully: {}", user.getEmail());
+            return UserResponse.from(user);
+        } catch (Exception e) {
+            logger.error("Error fetching user by ID: {}", e.getMessage());
+            throw new RuntimeException("Unable to fetch user details. Please check the user ID and try again.");
+        }
     }
 
     @Override
     public List<UserResponse> getAllUsers(int page, int size) {
-        logger.info("Fetching all users with pagination - page: {}, size: {}", page, size);
-        List<UserResponse> users = userRepository.findAll()
-                .stream()
-                .map(UserResponse::from)
-                .collect(Collectors.toList());
-        logger.info("Total users fetched: {}", users.size());
-        return users;
+        try {
+            logger.info("Fetching all users with pagination - page: {}, size: {}", page, size);
+            List<UserResponse> users = userRepository.findAll()
+                    .stream()
+                    .map(UserResponse::from)
+                    .collect(Collectors.toList());
+            logger.info("Total users fetched: {}", users.size());
+            return users;
+        } catch (Exception e) {
+            logger.error("Error fetching all users: {}", e.getMessage());
+            throw new RuntimeException("Unable to fetch users. Please try again later.");
+        }
     }
 
     @Override
     public void updateUserRole(String id, UpdateUserRoleRequest request) {
-        logger.info("Updating role for user ID: {}", id);
-        User user = userRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> {
-                    logger.error("User not found with ID: {}", id);
-                    return new RuntimeException("User not found");
-                });
-        user.setRole(request.getRole());
-        userRepository.save(user);
-        logger.info("User role updated successfully for ID: {}", id);
+        try {
+            logger.info("Updating role for user ID: {}", id);
+            User user = userRepository.findById(UUID.fromString(id))
+                    .orElseThrow(() -> {
+                        logger.error("User not found with ID: {}", id);
+                        return new RuntimeException("User not found with the provided ID.");
+                    });
+            user.setRole(request.getRole());
+            userRepository.save(user);
+            logger.info("User role updated successfully for ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error updating user role: {}", e.getMessage());
+            throw new RuntimeException("Unable to update user role. Please try again later.");
+        }
     }
 
     @Override
     public void deleteUser(String id) {
-        logger.info("Deleting user with ID: {}", id);
-        userRepository.deleteById(UUID.fromString(id));
-        logger.info("User deleted successfully with ID: {}", id);
+        try {
+            logger.info("Deleting user with ID: {}", id);
+            userRepository.deleteById(UUID.fromString(id));
+            logger.info("User deleted successfully with ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error deleting user: {}", e.getMessage());
+            throw new RuntimeException("Unable to delete user. Please try again later.");
+        }
     }
 
     private BookingResponse mapToResponse(Booking booking) {
