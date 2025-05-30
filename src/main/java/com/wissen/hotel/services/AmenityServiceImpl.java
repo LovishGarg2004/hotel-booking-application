@@ -28,43 +28,63 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public List<AmenityResponse> getAllAmenities() {
-        return amenityRepository.findAll().stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        try {
+            return amenityRepository.findAll().stream()
+                    .map(this::mapToDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch amenities. Please try again later.", e);
+        }
     }
 
     @Override
     public AmenityResponse getAmenityById(UUID id) {
-        Amenity amenity = amenityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Amenity not found"));
-        return mapToDto(amenity);
+        try {
+            Amenity amenity = amenityRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Amenity not found"));
+            return mapToDto(amenity);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch amenity. Please try again later.", e);
+        }
     }
 
     @Override
     public AmenityResponse createAmenity(CreateOrUpdateAmenityRequest request) {
-        Amenity amenity = Amenity.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .build();
-        return mapToDto(amenityRepository.save(amenity));
+        try {
+            Amenity amenity = Amenity.builder()
+                    .name(request.getName())
+                    .description(request.getDescription())
+                    .build();
+            return mapToDto(amenityRepository.save(amenity));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create amenity. Please try again later.", e);
+        }
     }
 
     @Override
     public AmenityResponse updateAmenity(UUID id, CreateOrUpdateAmenityRequest request) {
-        Amenity amenity = amenityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Amenity not found"));
+        try {
+            Amenity amenity = amenityRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Amenity not found"));
 
-        amenity.setName(request.getName());
-        amenity.setDescription(request.getDescription());
+            amenity.setName(request.getName());
+            amenity.setDescription(request.getDescription());
 
-        return mapToDto(amenityRepository.save(amenity));
+            return mapToDto(amenityRepository.save(amenity));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update amenity. Please try again later.", e);
+        }
     }
 
     @Override
     public void deleteAmenity(UUID id) {
-        if (!amenityRepository.existsById(id)) {
-            throw new RuntimeException("Amenity not found");
+        try {
+            if (!amenityRepository.existsById(id)) {
+                throw new RuntimeException("Amenity not found");
+            }
+            amenityRepository.deleteById(id);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete amenity. Please try again later.", e);
         }
-        amenityRepository.deleteById(id);
     }
 }

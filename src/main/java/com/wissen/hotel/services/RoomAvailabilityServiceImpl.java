@@ -24,102 +24,126 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
 
     @Override
     public boolean isRoomAvailable(UUID roomId, LocalDate date) {
-        RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
-        if (availability == null) {
-            return true; // If no availability record exists, assume room is available
+        try {
+            RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
+            if (availability == null) {
+                return true; // If no availability record exists, assume room is available
+            }
+            return availability.getAvailableRooms() > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to check room availability. Please try again later.", e);
         }
-        return availability.getAvailableRooms() > 0;
     }
 
     @Override
     public boolean isRoomAvailableForRange(UUID roomId, LocalDate checkin, LocalDate checkout) {
-        // Check every date in the range [checkin, checkout) for availability
-        for (LocalDate date = checkin; date.isBefore(checkout); date = date.plusDays(1)) {
-            if (!isRoomAvailable(roomId, date)) {
-                return false;
+        try {
+            // Check every date in the range [checkin, checkout) for availability
+            for (LocalDate date = checkin; date.isBefore(checkout); date = date.plusDays(1)) {
+                if (!isRoomAvailable(roomId, date)) {
+                    return false;
+                }
             }
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to check room availability for the range. Please try again later.", e);
         }
-        return true;
     }
 
     @Override
     public void updateInventory(UUID roomId, UpdateInventoryRequest request) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
-        RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, request.getDate());
+        try {
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+            RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, request.getDate());
 
-        int roomsToBook = request.getRoomsToBook();
-        if (availability == null) {
-            int availableRooms = room.getTotalRooms() - roomsToBook;
-            if (roomsToBook > room.getTotalRooms()) {
-                throw new IllegalArgumentException("Rooms to book cannot exceed total rooms.");
+            int roomsToBook = request.getRoomsToBook();
+            if (availability == null) {
+                int availableRooms = room.getTotalRooms() - roomsToBook;
+                if (roomsToBook > room.getTotalRooms()) {
+                    throw new IllegalArgumentException("Rooms to book cannot exceed total rooms.");
+                }
+                availability = RoomAvailability.builder()
+                    .room(room)
+                    .date(request.getDate())
+                    .availableRooms(availableRooms)
+                    .build();
+            } else {
+                if (roomsToBook > availability.getAvailableRooms()) {
+                    throw new IllegalArgumentException("Rooms to book cannot exceed available rooms.");
+                }
+                availability.setAvailableRooms(availability.getAvailableRooms() - roomsToBook);
             }
-            availability = RoomAvailability.builder()
-                .room(room)
-                .date(request.getDate())
-                .availableRooms(availableRooms)
-                .build();
-        } else {
-            if (roomsToBook > availability.getAvailableRooms()) {
-                throw new IllegalArgumentException("Rooms to book cannot exceed available rooms.");
-            }
-            availability.setAvailableRooms(availability.getAvailableRooms() - roomsToBook);
+
+            availabilityRepository.save(availability);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update inventory. Please try again later.", e);
         }
-
-        availabilityRepository.save(availability);
     }
 
     @Override
     public void blockRoomDates(UUID roomId, BlockRoomRequest request) {
-        Room room = roomRepository.findById(roomId).orElseThrow();
-        for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
-            RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
-            if (availability == null) {
-                availability = RoomAvailability.builder()
-                        .room(room)
-                        .date(date)
-                        .availableRooms(0)
-                        .build();
-            } else {
-                availability.setAvailableRooms(0);
+        try {
+            Room room = roomRepository.findById(roomId).orElseThrow();
+            for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
+                RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
+                if (availability == null) {
+                    availability = RoomAvailability.builder()
+                            .room(room)
+                            .date(date)
+                            .availableRooms(0)
+                            .build();
+                } else {
+                    availability.setAvailableRooms(0);
+                }
+                availabilityRepository.save(availability);
             }
-            availabilityRepository.save(availability);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to block room dates. Please try again later.", e);
         }
     }
 
     @Override
     public void unblockRoomDates(UUID roomId, BlockRoomRequest request) {
-        for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
-            RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
-            if (availability != null) {
-                availability.setAvailableRooms(1); // or whatever default value
-                availabilityRepository.save(availability);
+        try {
+            for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
+                RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
+                if (availability != null) {
+                    availability.setAvailableRooms(1); // or whatever default value
+                    availabilityRepository.save(availability);
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to unblock room dates. Please try again later.", e);
         }
     }
 
     public double getHotelAvailabilityRatio(UUID hotelId, LocalDate checkIn, LocalDate checkOut) {
-        List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
-        int totalRooms = rooms.stream().mapToInt(Room::getTotalRooms).sum();
-        if (totalRooms == 0) return 0.0;
+        try {
+            List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
+            int totalRooms = rooms.stream().mapToInt(Room::getTotalRooms).sum();
+            if (totalRooms == 0) return 0.0;
 
-        int days = 0;
-        double totalRatio = 0.0;
+            int days = 0;
+            double totalRatio = 0.0;
 
-        for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
-            int availableRooms = 0;
-            for (Room room : rooms) {
-                RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
-                if (availability != null) {
-                    availableRooms += availability.getAvailableRooms();
-                } else {
-                    availableRooms += room.getTotalRooms(); // If no record, assume all available
+            for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+                int availableRooms = 0;
+                for (Room room : rooms) {
+                    RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
+                    if (availability != null) {
+                        availableRooms += availability.getAvailableRooms();
+                    } else {
+                        availableRooms += room.getTotalRooms(); // If no record, assume all available
+                    }
                 }
+                totalRatio += ((double) availableRooms / totalRooms);
+                days++;
             }
-            totalRatio += ((double) availableRooms / totalRooms);
-            days++;
+            return days == 0 ? 1.0 : totalRatio / days;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate hotel availability ratio. Please try again later.", e);
         }
-        return days == 0 ? 1.0 : totalRatio / days;
     }
 
 }

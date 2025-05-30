@@ -19,27 +19,47 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public Image uploadImage(UUID referenceId, ImageType type, MultipartFile file) throws IOException {
-        return cloudinaryService.uploadImage(referenceId, type, file);
+    public Image uploadImage(UUID referenceId, ImageType type, MultipartFile file) {
+        try {
+            return cloudinaryService.uploadImage(referenceId, type, file);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload image. Please try again later.", e);
+        }
     }
 
     @Override
     public List<Image> getImagesByReference(UUID referenceId, ImageType type) {
-        return cloudinaryService.getImagesByReference(referenceId, type);
+        try {
+            return cloudinaryService.getImagesByReference(referenceId, type);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve images. Please try again later.", e);
+        }
     }
 
     @Override
     public List<Image> getImagesByType(ImageType type) {
-        return cloudinaryService.getImagesByType(type);
+        try {
+            return cloudinaryService.getImagesByType(type);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve images by type. Please try again later.", e);
+        }
     }
 
     @Override
-    public void deleteImage(UUID imageId) throws IOException {
-        cloudinaryService.deleteImage(imageId);
+    public void deleteImage(UUID imageId) {
+        try {
+            cloudinaryService.deleteImage(imageId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete image. Please try again later.", e);
+        }
     }
 
     @Override
     public ImageResponse mapToImageResponse(Image image) {
-        return cloudinaryService.mapToImageResponse(image);
+        try {
+            return cloudinaryService.mapToImageResponse(image);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to map image to response. Please try again later.", e);
+        }
     }
 }

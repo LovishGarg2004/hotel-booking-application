@@ -41,93 +41,117 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public List<HotelResponse> getAllHotels(String city, int page, int size) {
-        logger.info("Fetching all hotels. City: {}, Page: {}, Size: {}", city, page, size);
-        List<HotelResponse> hotels = hotelRepository.findAll().stream()
-                .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
-                .skip((long) page * size)
-                .limit(size)
-                .map(this::mapToResponse)
-                .toList();
-        logger.debug("Found {} hotels", hotels.size());
-        return hotels;
+        try {
+            logger.info("Fetching all hotels. City: {}, Page: {}, Size: {}", city, page, size);
+            List<HotelResponse> hotels = hotelRepository.findAll().stream()
+                    .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
+                    .skip((long) page * size)
+                    .limit(size)
+                    .map(this::mapToResponse)
+                    .toList();
+            logger.debug("Found {} hotels", hotels.size());
+            return hotels;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch hotels. Please try again later.", e);
+        }
     }
 
     @Override
     public HotelResponse getHotelById(UUID id) {
-        logger.info("Fetching hotel by ID: {}", id);
-        return hotelRepository.findById(id)
-                .map(this::mapToResponse)
-                .orElseThrow(() -> {
-                    logger.warn("Hotel not found for ID: {}", id);
-                    return new RuntimeException(HOTEL_NOT_FOUND);
-                });
+        try {
+            logger.info("Fetching hotel by ID: {}", id);
+            return hotelRepository.findById(id)
+                    .map(this::mapToResponse)
+                    .orElseThrow(() -> {
+                        logger.warn("Hotel not found for ID: {}", id);
+                        return new RuntimeException(HOTEL_NOT_FOUND);
+                    });
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch hotel details. Please try again later.", e);
+        }
     }
 
     @Override
     public HotelResponse createHotel(CreateHotelRequest request) {
-        logger.info("Creating hotel: {}", request.getName());
-        Hotel hotel = Hotel.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .address(request.getAddress())
-                .city(request.getCity())
-                .state(request.getState())
-                .country(request.getCountry())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .createdAt(LocalDateTime.now())
-                .isApproved(false)
-                .owner(AuthUtil.getCurrentUser()) // If current user logic available
-                .build();
-        Hotel saved = hotelRepository.save(hotel);
-        logger.debug("Hotel created with ID: {}", saved.getHotelId());
-        return mapToResponse(saved);
+        try {
+            logger.info("Creating hotel: {}", request.getName());
+            Hotel hotel = Hotel.builder()
+                    .name(request.getName())
+                    .description(request.getDescription())
+                    .address(request.getAddress())
+                    .city(request.getCity())
+                    .state(request.getState())
+                    .country(request.getCountry())
+                    .latitude(request.getLatitude())
+                    .longitude(request.getLongitude())
+                    .createdAt(LocalDateTime.now())
+                    .isApproved(false)
+                    .owner(AuthUtil.getCurrentUser()) // If current user logic available
+                    .build();
+            Hotel saved = hotelRepository.save(hotel);
+            logger.debug("Hotel created with ID: {}", saved.getHotelId());
+            return mapToResponse(saved);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create hotel. Please try again later.", e);
+        }
     }
 
 
     @Override
     public HotelResponse updateHotel(UUID id, UpdateHotelRequest request) {
-        logger.info("Updating hotel ID: {}", id);
-        Hotel hotel = hotelRepository.findById(id)
+        try {
+            logger.info("Updating hotel ID: {}", id);
+            Hotel hotel = hotelRepository.findById(id)
 
-                .orElseThrow(() -> {
-                    logger.warn("Hotel not found for update, ID: {}", id);
-                    return new RuntimeException(HOTEL_NOT_FOUND);
-                });
+                    .orElseThrow(() -> {
+                        logger.warn("Hotel not found for update, ID: {}", id);
+                        return new RuntimeException(HOTEL_NOT_FOUND);
+                    });
 
-        hotel.setName(request.getName());
-        hotel.setAddress(request.getAddress());
-        hotel.setDescription(request.getDescription());
-        hotel.setCity(request.getCity());
-        hotel.setState(request.getState());
-        hotel.setCountry(request.getCountry());
-        hotel.setLatitude(request.getLatitude());
-        hotel.setLongitude(request.getLongitude());
-        Hotel updated = hotelRepository.save(hotel);
-        logger.debug("Hotel updated: {}", updated.getHotelId());
-        return mapToResponse(updated);
+            hotel.setName(request.getName());
+            hotel.setAddress(request.getAddress());
+            hotel.setDescription(request.getDescription());
+            hotel.setCity(request.getCity());
+            hotel.setState(request.getState());
+            hotel.setCountry(request.getCountry());
+            hotel.setLatitude(request.getLatitude());
+            hotel.setLongitude(request.getLongitude());
+            Hotel updated = hotelRepository.save(hotel);
+            logger.debug("Hotel updated: {}", updated.getHotelId());
+            return mapToResponse(updated);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update hotel details. Please try again later.", e);
+        }
     }
 
     @Override
     public void deleteHotel(UUID id) {
-        logger.info("Deleting hotel ID: {}", id);
-        hotelRepository.deleteById(id);
-        logger.debug("Hotel deleted: {}", id);
+        try {
+            logger.info("Deleting hotel ID: {}", id);
+            hotelRepository.deleteById(id);
+            logger.debug("Hotel deleted: {}", id);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete hotel. Please try again later.", e);
+        }
     }
 
     @Override
     public HotelResponse approveHotel(UUID id) {
-        logger.info("Approving hotel ID: {}", id);
-        Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> {
-                    logger.warn("Hotel not found for approval, ID: {}", id);
-                    return new RuntimeException(HOTEL_NOT_FOUND);
-                });
+        try {
+            logger.info("Approving hotel ID: {}", id);
+            Hotel hotel = hotelRepository.findById(id)
+                    .orElseThrow(() -> {
+                        logger.warn("Hotel not found for approval, ID: {}", id);
+                        return new RuntimeException(HOTEL_NOT_FOUND);
+                    });
 
-        hotel.setApproved(true);
-        Hotel approved = hotelRepository.save(hotel);
-        logger.debug("Hotel approved: {}", approved.getHotelId());
-        return mapToResponse(approved);
+            hotel.setApproved(true);
+            Hotel approved = hotelRepository.save(hotel);
+            logger.debug("Hotel approved: {}", approved.getHotelId());
+            return mapToResponse(approved);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to approve hotel. Please try again later.", e);
+        }
     }
 
     private HotelResponse 
@@ -150,63 +174,67 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public List<HotelResponse> searchHotels(String city, LocalDate checkIn, LocalDate checkOut, int numberOfGuests, int page, int size) {
-        return hotelRepository.findAll().stream()
-            .filter(hotel -> (city == null || hotel.getCity().equalsIgnoreCase(city)))
-            .map(hotel -> {
-                List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
-                // Sort rooms by capacity descending (largest rooms first)
-                rooms = rooms.stream().sorted((a, b) -> Integer.compare(b.getCapacity(), a.getCapacity())).toList();
+        try {
+            return hotelRepository.findAll().stream()
+                .filter(hotel -> (city == null || hotel.getCity().equalsIgnoreCase(city)))
+                .map(hotel -> {
+                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                    // Sort rooms by capacity descending (largest rooms first)
+                    rooms = rooms.stream().sorted((a, b) -> Integer.compare(b.getCapacity(), a.getCapacity())).toList();
 
-                BigDecimal minTotalPrice = null;
-                int minRoomsRequired = 0;
-                Room chosenRoom = null;
+                    BigDecimal minTotalPrice = null;
+                    int minRoomsRequired = 0;
+                    Room chosenRoom = null;
 
-                for (Room room : rooms) {
-                    int guestsLeft = numberOfGuests;
-                    int roomsRequired = 0;
-                    BigDecimal totalPrice = BigDecimal.ZERO;
+                    for (Room room : rooms) {
+                        int guestsLeft = numberOfGuests;
+                        int roomsRequired = 0;
+                        BigDecimal totalPrice = BigDecimal.ZERO;
 
-                    // Calculate how many rooms needed for this room type
-                    int needed = (int) Math.ceil((double) guestsLeft / room.getCapacity());
-                    int maxAvailable = Integer.MAX_VALUE;
+                        // Calculate how many rooms needed for this room type
+                        int needed = (int) Math.ceil((double) guestsLeft / room.getCapacity());
+                        int maxAvailable = Integer.MAX_VALUE;
 
-                    // Find the minimum available rooms for this room across the date range
-                    for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
-                        var availability = roomAvailabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
-                        int available = (availability != null) ? availability.getAvailableRooms() : room.getTotalRooms();
-                        if (available < maxAvailable) maxAvailable = available;
+                        // Find the minimum available rooms for this room across the date range
+                        for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+                            var availability = roomAvailabilityRepository.findByRoom_RoomIdAndDate(room.getRoomId(), date);
+                            int available = (availability != null) ? availability.getAvailableRooms() : room.getTotalRooms();
+                            if (available < maxAvailable) maxAvailable = available;
+                        }
+
+                        // If not enough rooms available, skip this room
+                        if (maxAvailable < needed) continue;
+
+                        // Calculate price for needed rooms
+                        BigDecimal price = pricingEngineService.calculatePrice(room.getRoomId(), checkIn, checkOut).getFinalPrice();
+                        totalPrice = price.multiply(BigDecimal.valueOf(needed));
+                        roomsRequired = needed;
+
+                        // If this is the first valid option or cheaper than previous, select it
+                        if (minTotalPrice == null || totalPrice.compareTo(minTotalPrice) < 0) {
+                            minTotalPrice = totalPrice;
+                            minRoomsRequired = roomsRequired;
+                            chosenRoom = room;
+                        }
                     }
 
-                    // If not enough rooms available, skip this room
-                    if (maxAvailable < needed) continue;
-
-                    // Calculate price for needed rooms
-                    BigDecimal price = pricingEngineService.calculatePrice(room.getRoomId(), checkIn, checkOut).getFinalPrice();
-                    totalPrice = price.multiply(BigDecimal.valueOf(needed));
-                    roomsRequired = needed;
-
-                    // If this is the first valid option or cheaper than previous, select it
-                    if (minTotalPrice == null || totalPrice.compareTo(minTotalPrice) < 0) {
-                        minTotalPrice = totalPrice;
-                        minRoomsRequired = roomsRequired;
-                        chosenRoom = room;
+                    // If a suitable room was found, return the HotelResponse
+                    if (chosenRoom != null) {
+                        HotelResponse resp = mapToResponse(hotel);
+                        resp.setRoomsRequired(minRoomsRequired);
+                        resp.setFinalPrice(minTotalPrice);
+                        return resp;
+                    } else {
+                        return null; // No suitable room found for this hotel
                     }
-                }
-
-                // If a suitable room was found, return the HotelResponse
-                if (chosenRoom != null) {
-                    HotelResponse resp = mapToResponse(hotel);
-                    resp.setRoomsRequired(minRoomsRequired);
-                    resp.setFinalPrice(minTotalPrice);
-                    return resp;
-                } else {
-                    return null; // No suitable room found for this hotel
-                }
-            })
-            .filter(Objects::nonNull)
-            .skip((long) page * size)
-            .limit(size)
-            .toList();
+                })
+                .filter(Objects::nonNull)
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to search hotels. Please try again later.", e);
+        }
     }
 
 
