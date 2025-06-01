@@ -31,8 +31,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse createBooking(CreateBookingRequest request) {
-        log.info("Creating booking for room {}", request.getRoomId());
-
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
@@ -62,14 +60,12 @@ public class BookingServiceImpl implements BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        approveBooking(booking.getBookingId()); // Automatically approve the booking for simplicity in this example
-        // Update room availability when a booking is approved
+        approveBooking(booking.getBookingId());
         return mapToResponse(savedBooking);
     }
 
     @Override
     public BookingResponse getBookingById(UUID bookingId) {
-        log.info("Fetching booking by ID: {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
         return mapToResponse(booking);
@@ -77,7 +73,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse updateBooking(UUID bookingId, UpdateBookingRequest request) {
-        log.info("Updating booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
@@ -88,17 +83,15 @@ public class BookingServiceImpl implements BookingService {
             throw new BadRequestException("Room is not available for the new dates.");
         }
 
-        // Restore previous room availability for the old booking range
         LocalDate oldCurrent = booking.getCheckIn();
         while (oldCurrent.isBefore(booking.getCheckOut())) {
             UpdateInventoryRequest restoreRequest = new UpdateInventoryRequest();
             restoreRequest.setDate(oldCurrent);
-            restoreRequest.setRoomsToBook(-booking.getRoomsBooked()); // Add back previously booked rooms
+            restoreRequest.setRoomsToBook(-booking.getRoomsBooked());
             roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), restoreRequest);
             oldCurrent = oldCurrent.plusDays(1);
         }
 
-        // Update booking fields
         booking.setCheckIn(request.getCheckIn());
         booking.setCheckOut(request.getCheckOut());
         booking.setGuests(request.getGuests());
@@ -107,7 +100,6 @@ public class BookingServiceImpl implements BookingService {
         long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
         booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked())));
 
-        // Deduct new room availability for the new booking range
         LocalDate newCurrent = booking.getCheckIn();
         while (newCurrent.isBefore(booking.getCheckOut())) {
             UpdateInventoryRequest deductRequest = new UpdateInventoryRequest();
@@ -116,7 +108,6 @@ public class BookingServiceImpl implements BookingService {
             roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), deductRequest);
             newCurrent = newCurrent.plusDays(1);
         }
-
         return mapToResponse(bookingRepository.save(booking));
     }
 
@@ -129,38 +120,34 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalStateException("Only PENDING bookings can be approved.");
         }
 
-        booking.setStatus(BookingStatus.CONFIRMED);  // Set new status
+        booking.setStatus(BookingStatus.CONFIRMED);
         bookingRepository.save(booking);
 
-        // Update inventory (room availability) for each date between check-in and check-out (exclusive)
         LocalDate current = booking.getCheckIn();
         while (current.isBefore(booking.getCheckOut())) {
             UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
             inventoryRequest.setDate(current);
-            inventoryRequest.setRoomsToBook(booking.getRoomsBooked()); // Use roomsBooked for inventory update
+            inventoryRequest.setRoomsToBook(booking.getRoomsBooked());
             roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
             current = current.plusDays(1);
         }
 
-        return mapToResponse(booking);  // Assuming you have a mapper
+        return mapToResponse(booking);
     }
 
     @Override
-    //Implementation for cancelBooking with the RoomAvailabilityService, as making the availableRooms equal to totalRooms - roomsBooked in this booking
     public BookingResponse cancelBooking(UUID bookingId) {
-        log.info("Cancelling booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
-        // Restore room availability for each date in the booking range
         LocalDate current = booking.getCheckIn();
         while (current.isBefore(booking.getCheckOut())) {
             UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
             inventoryRequest.setDate(current);
-            inventoryRequest.setRoomsToBook(-booking.getRoomsBooked()); // Negative to add rooms back
+            inventoryRequest.setRoomsToBook(-booking.getRoomsBooked());
             roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
             current = current.plusDays(1);
         }
@@ -170,7 +157,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<BookingResponse> getAllBookings(String filter) {
-        log.info("Fetching all bookings for admin");
         return bookingRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -178,8 +164,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<BookingResponse> getBookingsForHotel(UUID hotelId) {
-        log.info("Fetching bookings for hotel ID: {}", hotelId);
-
         return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -187,11 +171,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse generateInvoice(UUID bookingId) {
-        log.info("Generating invoice for booking {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
-
-        // You can add detailed invoice logic here
         return mapToResponse(booking);
     }
 
@@ -207,7 +188,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
-        // 1. Check existing bookings for the room
         List<Booking> existingBookings = bookingRepository.findByRoom_RoomId(roomId);
 
         for (Booking booking : existingBookings) {

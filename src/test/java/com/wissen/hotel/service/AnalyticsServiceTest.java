@@ -6,6 +6,7 @@ import com.wissen.hotel.enums.RoomType;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.services.AnalyticsService;
+import com.wissen.hotel.services.AnalyticsServiceImpl;
 import com.wissen.hotel.services.BookingService;
 import com.wissen.hotel.services.HotelService;
 
@@ -35,7 +36,7 @@ class AnalyticsServiceTest {
     private HotelService hotelService;
 
     @InjectMocks
-    private AnalyticsService analyticsService;
+    private AnalyticsServiceImpl analyticsService;
 
     private UUID hotelId;
     private UUID roomId1;
