@@ -31,200 +31,149 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse createBooking(CreateBookingRequest request) {
-        try {
-            log.info("Creating booking for room {}", request.getRoomId());
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
-            Room room = roomRepository.findById(request.getRoomId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        User user = AuthUtil.getCurrentUser();
 
-            User user = AuthUtil.getCurrentUser();
+        validateBookingDates(request.getCheckIn(), request.getCheckOut());
 
-            validateBookingDates(request.getCheckIn(), request.getCheckOut());
-
-            boolean isAvailable = isRoomAvailable(room.getRoomId(), request.getCheckIn(), request.getCheckOut());
-            if (!isAvailable) {
-                throw new BadRequestException("Room is not available for the selected dates.");
-            }
-
-            long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
-            BigDecimal finalPrice = room.getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked()));
-
-            Booking booking = Booking.builder()
-                    .room(room)
-                    .user(user)
-                    .checkIn(request.getCheckIn())
-                    .checkOut(request.getCheckOut())
-                    .guests(request.getGuests())
-                    .roomsBooked(request.getRoomsBooked())
-                    .status(BookingStatus.PENDING)
-                    .finalPrice(finalPrice)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            Booking savedBooking = bookingRepository.save(booking);
-
-            approveBooking(booking.getBookingId()); // Automatically approve the booking for simplicity in this example
-            // Update room availability when a booking is approved
-            return mapToResponse(savedBooking);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create booking. Please try again later.", e);
+        boolean isAvailable = isRoomAvailable(room.getRoomId(), request.getCheckIn(), request.getCheckOut());
+        if (!isAvailable) {
+            throw new BadRequestException("Room is not available for the selected dates.");
         }
+
+        long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
+        BigDecimal finalPrice = room.getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked()));
+
+        Booking booking = Booking.builder()
+                .room(room)
+                .user(user)
+                .checkIn(request.getCheckIn())
+                .checkOut(request.getCheckOut())
+                .guests(request.getGuests())
+                .roomsBooked(request.getRoomsBooked())
+                .status(BookingStatus.PENDING)
+                .finalPrice(finalPrice)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        approveBooking(booking.getBookingId());
+        return mapToResponse(savedBooking);
     }
 
     @Override
     public BookingResponse getBookingById(UUID bookingId) {
-        try {
-            log.info("Fetching booking by ID: {}", bookingId);
-            Booking booking = bookingRepository.findById(bookingId)
-                    .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
-            return mapToResponse(booking);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch booking details. Please try again later.", e);
-        }
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
+        return mapToResponse(booking);
     }
 
     @Override
     public BookingResponse updateBooking(UUID bookingId, UpdateBookingRequest request) {
-        try {
-            log.info("Updating booking {}", bookingId);
-            Booking booking = bookingRepository.findById(bookingId)
-                    .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
-            validateBookingDates(request.getCheckIn(), request.getCheckOut());
+        validateBookingDates(request.getCheckIn(), request.getCheckOut());
 
-            boolean isAvailable = isRoomAvailable(booking.getRoom().getRoomId(), request.getCheckIn(), request.getCheckOut(), bookingId);
-            if (!isAvailable) {
-                throw new BadRequestException("Room is not available for the new dates.");
-            }
-
-            // Restore previous room availability for the old booking range
-            LocalDate oldCurrent = booking.getCheckIn();
-            while (oldCurrent.isBefore(booking.getCheckOut())) {
-                UpdateInventoryRequest restoreRequest = new UpdateInventoryRequest();
-                restoreRequest.setDate(oldCurrent);
-                restoreRequest.setRoomsToBook(-booking.getRoomsBooked()); // Add back previously booked rooms
-                roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), restoreRequest);
-                oldCurrent = oldCurrent.plusDays(1);
-            }
-
-            // Update booking fields
-            booking.setCheckIn(request.getCheckIn());
-            booking.setCheckOut(request.getCheckOut());
-            booking.setGuests(request.getGuests());
-            booking.setRoomsBooked(request.getRoomsBooked());
-
-            long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
-            booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked())));
-
-            // Deduct new room availability for the new booking range
-            LocalDate newCurrent = booking.getCheckIn();
-            while (newCurrent.isBefore(booking.getCheckOut())) {
-                UpdateInventoryRequest deductRequest = new UpdateInventoryRequest();
-                deductRequest.setDate(newCurrent);
-                deductRequest.setRoomsToBook(booking.getRoomsBooked());
-                roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), deductRequest);
-                newCurrent = newCurrent.plusDays(1);
-            }
-
-            return mapToResponse(bookingRepository.save(booking));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update booking. Please try again later.", e);
+        boolean isAvailable = isRoomAvailable(booking.getRoom().getRoomId(), request.getCheckIn(), request.getCheckOut(), bookingId);
+        if (!isAvailable) {
+            throw new BadRequestException("Room is not available for the new dates.");
         }
+
+        LocalDate oldCurrent = booking.getCheckIn();
+        while (oldCurrent.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest restoreRequest = new UpdateInventoryRequest();
+            restoreRequest.setDate(oldCurrent);
+            restoreRequest.setRoomsToBook(-booking.getRoomsBooked());
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), restoreRequest);
+            oldCurrent = oldCurrent.plusDays(1);
+        }
+
+        booking.setCheckIn(request.getCheckIn());
+        booking.setCheckOut(request.getCheckOut());
+        booking.setGuests(request.getGuests());
+        booking.setRoomsBooked(request.getRoomsBooked());
+
+        long days = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
+        booking.setFinalPrice(booking.getRoom().getBasePrice().multiply(BigDecimal.valueOf(days)).multiply(BigDecimal.valueOf(request.getRoomsBooked())));
+
+        LocalDate newCurrent = booking.getCheckIn();
+        while (newCurrent.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest deductRequest = new UpdateInventoryRequest();
+            deductRequest.setDate(newCurrent);
+            deductRequest.setRoomsToBook(booking.getRoomsBooked());
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), deductRequest);
+            newCurrent = newCurrent.plusDays(1);
+        }
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Override
     public BookingResponse approveBooking(UUID bookingId) {
-        try {
-            Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
-            if (booking.getStatus() != BookingStatus.PENDING) {
-                throw new IllegalStateException("Only PENDING bookings can be approved.");
-            }
-
-            booking.setStatus(BookingStatus.CONFIRMED);  // Set new status
-            bookingRepository.save(booking);
-
-            // Update inventory (room availability) for each date between check-in and check-out (exclusive)
-            LocalDate current = booking.getCheckIn();
-            while (current.isBefore(booking.getCheckOut())) {
-                UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
-                inventoryRequest.setDate(current);
-                inventoryRequest.setRoomsToBook(booking.getRoomsBooked()); // Use roomsBooked for inventory update
-                roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
-                current = current.plusDays(1);
-            }
-
-            return mapToResponse(booking);  // Assuming you have a mapper
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to approve booking. Please try again later.", e);
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING bookings can be approved.");
         }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        bookingRepository.save(booking);
+
+        LocalDate current = booking.getCheckIn();
+        while (current.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
+            inventoryRequest.setDate(current);
+            inventoryRequest.setRoomsToBook(booking.getRoomsBooked());
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
+            current = current.plusDays(1);
+        }
+
+        return mapToResponse(booking);
     }
 
     @Override
-    //Implementation for cancelBooking with the RoomAvailabilityService, as making the availableRooms equal to totalRooms - roomsBooked in this booking
     public BookingResponse cancelBooking(UUID bookingId) {
-        try {
-            log.info("Cancelling booking {}", bookingId);
-            Booking booking = bookingRepository.findById(bookingId)
-                    .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
 
-            booking.setStatus(BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
 
-            // Restore room availability for each date in the booking range
-            LocalDate current = booking.getCheckIn();
-            while (current.isBefore(booking.getCheckOut())) {
-                UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
-                inventoryRequest.setDate(current);
-                inventoryRequest.setRoomsToBook(-booking.getRoomsBooked()); // Negative to add rooms back
-                roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
-                current = current.plusDays(1);
-            }
-
-            return mapToResponse(booking);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to cancel booking. Please try again later.", e);
+        LocalDate current = booking.getCheckIn();
+        while (current.isBefore(booking.getCheckOut())) {
+            UpdateInventoryRequest inventoryRequest = new UpdateInventoryRequest();
+            inventoryRequest.setDate(current);
+            inventoryRequest.setRoomsToBook(-booking.getRoomsBooked());
+            roomAvailabilityService.updateInventory(booking.getRoom().getRoomId(), inventoryRequest);
+            current = current.plusDays(1);
         }
+
+        return mapToResponse(booking);
     }
 
     @Override
     public List<BookingResponse> getAllBookings(String filter) {
-        try {
-            log.info("Fetching all bookings for admin");
-            return bookingRepository.findAll().stream()
-                    .map(this::mapToResponse)
-                    .toList();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch bookings. Please try again later.", e);
-        }
+        return bookingRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Override
     public List<BookingResponse> getBookingsForHotel(UUID hotelId) {
-        try {
-            log.info("Fetching bookings for hotel ID: {}", hotelId);
-
-            return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
-                    .map(this::mapToResponse)
-                    .toList();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch hotel bookings. Please try again later.", e);
-        }
+        return bookingRepository.findByRoom_Hotel_HotelId(hotelId).stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Override
     public BookingResponse generateInvoice(UUID bookingId) {
-        try {
-            log.info("Generating invoice for booking {}", bookingId);
-            Booking booking = bookingRepository.findById(bookingId)
-                    .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
-
-            // You can add detailed invoice logic here
-            return mapToResponse(booking);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate invoice. Please try again later.", e);
-        }
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException(BOOKING_NOT_FOUND));
+        return mapToResponse(booking);
     }
 
     private void validateBookingDates(LocalDate checkIn, LocalDate checkOut) {
@@ -239,7 +188,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     public boolean isRoomAvailable(UUID roomId, LocalDate checkIn, LocalDate checkOut, UUID excludeBookingId) {
-        // 1. Check existing bookings for the room
         List<Booking> existingBookings = bookingRepository.findByRoom_RoomId(roomId);
 
         for (Booking booking : existingBookings) {

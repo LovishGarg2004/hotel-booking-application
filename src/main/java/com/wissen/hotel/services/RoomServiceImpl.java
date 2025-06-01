@@ -55,6 +55,8 @@ public class RoomServiceImpl implements RoomService {
             }
 
             return mapToResponse(savedRoom);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create room. Please try again later.", e);
         }
@@ -67,6 +69,8 @@ public class RoomServiceImpl implements RoomService {
             Room room = roomRepository.findById(roomId)
                     .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
             return mapToResponse(room);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch room details. Please try again later.", e);
         }
@@ -89,6 +93,8 @@ public class RoomServiceImpl implements RoomService {
             room.setTotalRooms(request.getTotalRooms());
 
             return mapToResponse(roomRepository.save(room));
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to update room. Please try again later.", e);
         }
@@ -106,6 +112,8 @@ public class RoomServiceImpl implements RoomService {
             }
 
             roomRepository.delete(room);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete room. Please try again later.", e);
         }
@@ -156,6 +164,8 @@ public class RoomServiceImpl implements RoomService {
             }
 
             return mapToResponse(savedRoom);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to update room amenities. Please try again later.", e);
         }

@@ -4,6 +4,7 @@ import com.wissen.hotel.dtos.AmenityResponse;
 import com.wissen.hotel.dtos.CreateOrUpdateAmenityRequest;
 import com.wissen.hotel.models.Amenity;
 import com.wissen.hotel.repositories.AmenityRepository;
+import com.wissen.hotel.exceptions.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,63 +29,43 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public List<AmenityResponse> getAllAmenities() {
-        try {
-            return amenityRepository.findAll().stream()
-                    .map(this::mapToDto)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch amenities. Please try again later.", e);
-        }
+        return amenityRepository.findAll().stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
     }
 
     @Override
     public AmenityResponse getAmenityById(UUID id) {
-        try {
-            Amenity amenity = amenityRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Amenity not found"));
-            return mapToDto(amenity);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch amenity. Please try again later.", e);
-        }
+        Amenity amenity = amenityRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
+        return mapToDto(amenity);
     }
 
     @Override
     public AmenityResponse createAmenity(CreateOrUpdateAmenityRequest request) {
-        try {
-            Amenity amenity = Amenity.builder()
-                    .name(request.getName())
-                    .description(request.getDescription())
-                    .build();
-            return mapToDto(amenityRepository.save(amenity));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create amenity. Please try again later.", e);
-        }
+        Amenity amenity = Amenity.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .build();
+        return mapToDto(amenityRepository.save(amenity));
     }
 
     @Override
     public AmenityResponse updateAmenity(UUID id, CreateOrUpdateAmenityRequest request) {
-        try {
-            Amenity amenity = amenityRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Amenity not found"));
+        Amenity amenity = amenityRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
 
-            amenity.setName(request.getName());
-            amenity.setDescription(request.getDescription());
+        amenity.setName(request.getName());
+        amenity.setDescription(request.getDescription());
 
-            return mapToDto(amenityRepository.save(amenity));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update amenity. Please try again later.", e);
-        }
+        return mapToDto(amenityRepository.save(amenity));
     }
 
     @Override
     public void deleteAmenity(UUID id) {
-        try {
-            if (!amenityRepository.existsById(id)) {
-                throw new RuntimeException("Amenity not found");
-            }
-            amenityRepository.deleteById(id);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete amenity. Please try again later.", e);
+        if (!amenityRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Amenity not found");
         }
+        amenityRepository.deleteById(id);
     }
 }

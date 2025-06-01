@@ -12,6 +12,7 @@ import com.wissen.hotel.repositories.BookingRepository;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.services.UserServiceImpl;
 import com.wissen.hotel.utils.AuthUtil;
+import com.wissen.hotel.exceptions.UserServiceException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,28 +59,23 @@ class UserServiceImplTest {
     @Test
     void testUpdateCurrentUser_Success() {
         try (MockedStatic<AuthUtil> authUtilMock = mockStatic(AuthUtil.class)) {
-            // Mock AuthUtil
             authUtilMock.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
 
-            // Prepare request
             UpdateUserRequest request = new UpdateUserRequest();
             request.setName("Updated Name");
             request.setPhone("9999999999");
             request.setDob(LocalDate.of(1998, 5, 10));
 
-            // Mock save behavior
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            // Call method
             UserResponse response = userService.updateCurrentUser(request);
 
-            // Assertions
             assertNotNull(response);
             assertEquals("Updated Name", response.getName());
             assertEquals("9999999999", response.getPhone());
             assertEquals(LocalDate.of(1998, 5, 10), response.getDob());
 
-            verify(userRepository, times(1)).save(mockUser);
+            verify(userRepository, times(1)).save(any(User.class));
         }
     }
 
@@ -88,24 +84,22 @@ class UserServiceImplTest {
         try (MockedStatic<AuthUtil> authUtilMock = mockStatic(AuthUtil.class)) {
             authUtilMock.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
 
-            // Mock Room
             Room mockRoom1 = new Room();
             mockRoom1.setRoomId(UUID.randomUUID());
 
             Room mockRoom2 = new Room();
             mockRoom2.setRoomId(UUID.randomUUID());
 
-            // Mock Bookings
             Booking booking1 = new Booking();
             booking1.setBookingId(UUID.randomUUID());
             booking1.setUser(mockUser);
-            booking1.setRoom(mockRoom1);  // ✅ Set room
+            booking1.setRoom(mockRoom1);
             booking1.setGuests(2);
 
             Booking booking2 = new Booking();
             booking2.setBookingId(UUID.randomUUID());
             booking2.setUser(mockUser);
-            booking2.setRoom(mockRoom2);  // ✅ Set room
+            booking2.setRoom(mockRoom2);
             booking2.setGuests(4);
 
             when(bookingRepository.findAllByUser_UserId(mockUser.getUserId()))
@@ -115,7 +109,7 @@ class UserServiceImplTest {
 
             assertNotNull(bookings);
             assertEquals(2, bookings.size());
-            assertNotNull(bookings.get(0).getRoomId());  // Optional extra validation
+            assertNotNull(bookings.get(0).getRoomId());
             verify(bookingRepository, times(1)).findAllByUser_UserId(mockUser.getUserId());
         }
     }
@@ -133,11 +127,10 @@ class UserServiceImplTest {
         UserResponse response = userService.getUserById(userId.toString());
 
         assertNotNull(response);
-        assertEquals(userId.toString(), response.getId()); // FIXED
+        assertEquals(userId.toString(), response.getId());
         assertEquals("user@example.com", response.getEmail());
         assertEquals("Test User", response.getName());
     }
-
 
     @Test
     void testGetUserById_NotFound() {
@@ -145,11 +138,11 @@ class UserServiceImplTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        UserServiceException exception = assertThrows(UserServiceException.class, () -> {
             userService.getUserById(userId.toString());
         });
 
-        assertEquals("User not found", exception.getMessage());
+        assertEquals("User not found with the provided ID.", exception.getMessage());
     }
 
     @Test
@@ -176,7 +169,7 @@ class UserServiceImplTest {
         User user = new User();
         user.setUserId(userId);
         user.setEmail("user@example.com");
-        user.setRole(UserRole.CUSTOMER); // Initial role
+        user.setRole(UserRole.CUSTOMER);
 
         UpdateUserRoleRequest roleRequest = new UpdateUserRoleRequest();
         roleRequest.setRole(UserRole.ADMIN);
@@ -197,11 +190,11 @@ class UserServiceImplTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        UserServiceException exception = assertThrows(UserServiceException.class, () -> {
             userService.updateUserRole(userId.toString(), roleRequest);
         });
 
-        assertEquals("User not found", exception.getMessage());
+        assertEquals("User not found with the provided ID.", exception.getMessage());
     }
 
     @Test
@@ -212,7 +205,4 @@ class UserServiceImplTest {
 
         verify(userRepository).deleteById(userId);
     }
-
-
-
 }

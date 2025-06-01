@@ -76,6 +76,8 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
             }
 
             availabilityRepository.save(availability);
+        } catch (ResourceNotFoundException | IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to update inventory. Please try again later.", e);
         }

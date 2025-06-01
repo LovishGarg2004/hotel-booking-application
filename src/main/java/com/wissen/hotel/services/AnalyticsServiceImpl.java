@@ -4,8 +4,8 @@ import com.wissen.hotel.dtos.*;
 import com.wissen.hotel.enums.BookingStatus;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.RoomRepository;
-import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,7 +37,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             .build();
     }
 
-    private HotelAnalyticsResponse.Overview createOverview(List<BookingResponse> bookings, 
+    private HotelAnalyticsResponse.Overview createOverview(List<BookingResponse> bookings,
                                                          List<Room> rooms, double averageRating) {
         LocalDate today = LocalDate.now();
         LocalDate thirtyDaysAgo = today.minusDays(29);
@@ -62,7 +62,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             LocalDate date = today.minusDays(i);
             long dailyBookings = countDailyBookings(bookings, date);
             BigDecimal dailyRevenue = calculateDailyRevenue(bookings, date);
-            
+
             recentBookings.add(HotelAnalyticsResponse.RecentBooking.builder()
                 .date(date.toString())
                 .bookings(dailyBookings)
@@ -101,7 +101,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             LocalDate month = today.minusMonths(i).withDayOfMonth(1);
             String monthStr = month.getYear() + "-" + String.format("%02d", month.getMonthValue());
             BigDecimal revenue = calculateMonthlyRevenue(bookings, month);
-            
+
             monthlyRevenue.add(HotelAnalyticsResponse.MonthlyRevenue.builder()
                 .month(monthStr)
                 .revenue(revenue)
@@ -118,11 +118,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private double calculateOccupancyRate(List<BookingResponse> bookings, List<Room> rooms, 
+    private double calculateOccupancyRate(List<BookingResponse> bookings, List<Room> rooms,
                                         LocalDate start, LocalDate end) {
         int totalRooms = rooms.stream().mapToInt(Room::getTotalRooms).sum();
         if (totalRooms == 0) return 0.0;
-
         long totalNights = ChronoUnit.DAYS.between(start, end.plusDays(1));
         long bookedNights = bookings.stream()
             .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
@@ -151,7 +150,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private Map<String, List<BookingResponse>> groupBookingsByRoomType(List<Room> rooms, 
+    private Map<String, List<BookingResponse>> groupBookingsByRoomType(List<Room> rooms,
                                                                       List<BookingResponse> bookings) {
         Map<UUID, String> roomIdToType = rooms.stream()
             .collect(Collectors.toMap(
@@ -196,7 +195,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private BigDecimal calculateMonthlyRevenue(List<BookingResponse> bookings, LocalDate month) {
         return bookings.stream()
             .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
-            .filter(b -> b.getCheckIn().getMonthValue() == month.getMonthValue() && 
+            .filter(b -> b.getCheckIn().getMonthValue() == month.getMonthValue() &&
                        b.getCheckIn().getYear() == month.getYear())
             .map(BookingResponse::getFinalPrice)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
