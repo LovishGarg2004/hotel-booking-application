@@ -62,7 +62,7 @@ public class HotelServiceImplTest {
                 .hotelId(hotelId)
                 .name("Test Hotel")
                 .city("Test City")
-                .isApproved(false)
+                .isApproved(true)
                 .owner(mockOwner) // Set mock owner
                 .build();
         // Inject the mock RoomAvailabilityRepository into hotelService

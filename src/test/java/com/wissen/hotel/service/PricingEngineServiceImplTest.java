@@ -4,7 +4,6 @@ import com.wissen.hotel.dtos.PriceCalculationResponse;
 import com.wissen.hotel.dtos.PriceSimulationRequest;
 import com.wissen.hotel.dtos.PriceSimulationResult;
 import com.wissen.hotel.enums.PricingRuleType;
-import com.wissen.hotel.exceptions.EntityNotFoundException;
 import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.PricingRule;
 import com.wissen.hotel.models.Room;
@@ -12,17 +11,15 @@ import com.wissen.hotel.repositories.PricingRuleRepository;
 import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.services.PricingEngineServiceImpl;
 import com.wissen.hotel.services.RoomAvailabilityService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.*;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,7 +35,9 @@ class PricingEngineServiceImplTest {
     private PricingRuleRepository pricingRuleRepository;
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
-    @InjectMocks
+    @Mock
+    private Clock clock; // <-- Add this
+
     private PricingEngineServiceImpl pricingEngine;
 
     private UUID roomId;
@@ -55,6 +54,14 @@ class PricingEngineServiceImplTest {
         Hotel hotel = new Hotel();
         hotel.setHotelId(hotelId);
         testRoom.setHotel(hotel);
+
+        // Re-initialize pricingEngine with the mock clock
+        pricingEngine = new PricingEngineServiceImpl(
+                roomRepository,
+                pricingRuleRepository,
+                roomAvailabilityService,
+                clock
+        );
     }
 
     private PricingRule createRule(PricingRuleType type, double value) {
@@ -114,68 +121,69 @@ class PricingEngineServiceImplTest {
         peakRule.setRuleId(UUID.randomUUID());
         lastMinuteRule.setRuleId(UUID.randomUUID());
         weekendRule.setRuleId(UUID.randomUUID());
-    
+
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
         when(pricingRuleRepository.findByHotel_HotelId(hotelId)).thenReturn(List.of(peakRule, lastMinuteRule, weekendRule));
         when(roomAvailabilityService.getHotelAvailabilityRatio(any(), any(), any())).thenReturn(0.15); // Triggers PEAK
-    
-        // Stay: June 7 (Sat) to June 9 (Mon) → 2 nights with 2 weekend nights
+
+        // Stay: May 31 (Sat) to June 1 (Sun) → 1 night with 1 weekend night
         LocalDate checkIn = LocalDate.of(2025, 5, 31);
-        LocalDate checkOut = LocalDate.of(2025, 6, 1);
-    
+        LocalDate checkOut = checkIn.plusDays(1);
+
+        // Mock the clock to 3 days before check-in
+        LocalDate mockToday = checkIn.minusDays(3);
+        Instant fixedInstant = mockToday.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        when(clock.instant()).thenReturn(fixedInstant);
+        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
+
         PriceCalculationResponse response = pricingEngine.calculatePrice(
-            roomId,
-            checkIn,
-            checkOut
+                roomId,
+                checkIn,
+                checkOut
         );
-    
-        // Expected: 100 + (15% PEAK) + (5% LAST_MINUTE) + (10% × 2 nights WEEKEND)
+
+        // Expected: 100 + (15% PEAK) + (5% LAST_MINUTE) + (10% WEEKEND) = 130
         assertEquals(new BigDecimal("130.00"), response.getFinalPrice());
         assertTrue(response.getAppliedRuleIds().containsAll(List.of(
-            peakRule.getRuleId(),
-            lastMinuteRule.getRuleId(),
-            weekendRule.getRuleId()
+                peakRule.getRuleId(),
+                lastMinuteRule.getRuleId(),
+                weekendRule.getRuleId()
         )));
     }
-    
+
     @Test
     void simulatePricing_withDateSpecificRule_appliesDiscount() {
         PricingRule dateRule = createDateRule(
-            PricingRuleType.DISCOUNT, -5.0,
-            LocalDate.of(2025, 6, 1),
-            LocalDate.of(2025, 6, 1) // Fix end date to June 1 (single day)
+                PricingRuleType.DISCOUNT, -5.0,
+                LocalDate.of(2025, 6, 1),
+                LocalDate.of(2025, 6, 1)
         );
-    
+
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
-        
-        // Mock to return rule ONLY for June 1
         when(pricingRuleRepository.findByHotelAndDateRange(
-            eq(hotelId),
-            eq(LocalDate.of(2025, 6, 1)),
-            eq(LocalDate.of(2025, 6, 1))
+                eq(hotelId),
+                eq(LocalDate.of(2025, 6, 1)),
+                eq(LocalDate.of(2025, 6, 1))
         )).thenReturn(List.of(dateRule));
-    
-        // Mock to return empty list for other dates
         when(pricingRuleRepository.findByHotelAndDateRange(
-            any(UUID.class),
-            argThat(date -> !date.equals(LocalDate.of(2025, 6, 1))),
-            any(LocalDate.class)
+                any(UUID.class),
+                argThat(date -> !date.equals(LocalDate.of(2025, 6, 1))),
+                any(LocalDate.class)
         )).thenReturn(Collections.emptyList());
-    
+
         PriceSimulationRequest request = PriceSimulationRequest.builder()
-            .roomId(roomId)
-            .checkIn(LocalDate.of(2025, 5, 31))
-            .checkOut(LocalDate.of(2025, 6, 3))
-            .build();
-    
+                .roomId(roomId)
+                .checkIn(LocalDate.of(2025, 5, 31))
+                .checkOut(LocalDate.of(2025, 6, 3))
+                .build();
+
         List<PriceSimulationResult> results = pricingEngine.simulatePricing(request);
-    
+
         assertEquals(3, results.size());
         assertEquals(new BigDecimal("100.00"), results.get(0).getPrice()); // May 31
         assertEquals(new BigDecimal("95.00"), results.get(1).getPrice());  // June 1
         assertEquals(new BigDecimal("100.00"), results.get(2).getPrice()); // June 2
     }
-    
 
     @Test
     void applyPricingRules_withZeroValueRule_ignoresRule() {

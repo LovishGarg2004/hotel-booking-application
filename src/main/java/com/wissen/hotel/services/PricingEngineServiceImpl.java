@@ -16,8 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +29,7 @@ public class PricingEngineServiceImpl implements PricingEngineService {
     private final RoomRepository roomRepository;
     private final PricingRuleRepository pricingRuleRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final Clock clock; // <-- Inject Clock
 
     @Override
     public PriceCalculationResponse calculatePrice(UUID roomId, LocalDate checkIn, LocalDate checkOut) {
@@ -38,7 +38,6 @@ public class PricingEngineServiceImpl implements PricingEngineService {
                 .orElseThrow(() -> new EntityNotFoundException("Room not found"));
             BigDecimal basePrice = room.getBasePrice();
             UUID hotelId = room.getHotel().getHotelId();
-            // Fetch rules: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
             List<PricingRule> dateAgnosticRules = pricingRuleRepository.findByHotel_HotelId(hotelId).stream()
                 .filter(rule -> rule.getRuleType() == PricingRuleType.WEEKEND || rule.getRuleType() == PricingRuleType.PEAK || rule.getRuleType() == PricingRuleType.LAST_MINUTE)
                 .toList();
@@ -49,7 +48,6 @@ public class PricingEngineServiceImpl implements PricingEngineService {
             rules.addAll(dateAgnosticRules);
             rules.addAll(dateSpecificRules);
 
-            // Apply all applicable percentage increases
             BigDecimal finalPrice = applyPricingRules(basePrice, rules, checkIn, checkOut, hotelId);
 
             List<UUID> ruleIds = rules.stream().map(PricingRule::getRuleId).toList();
@@ -74,7 +72,6 @@ public class PricingEngineServiceImpl implements PricingEngineService {
             UUID hotelId = room.getHotel().getHotelId();
             List<PriceSimulationResult> results = new ArrayList<>();
             for (LocalDate date = request.getCheckIn(); !date.isAfter(request.getCheckOut().minusDays(1)); date = date.plusDays(1)) {
-                // Fetch rules for this date: date-agnostic for WEEKEND, PEAK, LAST_MINUTE; date-specific for others
                 List<PricingRule> dateAgnosticRules = pricingRuleRepository.findByHotel_HotelId(hotelId).stream()
                     .filter(rule -> rule.getRuleType() == PricingRuleType.WEEKEND || rule.getRuleType() == PricingRuleType.PEAK || rule.getRuleType() == PricingRuleType.LAST_MINUTE)
                     .toList();
@@ -105,49 +102,46 @@ public class PricingEngineServiceImpl implements PricingEngineService {
         LocalDate checkIn,
         LocalDate checkOut,
         UUID hotelId
-) {
-    BigDecimal totalPrice = BigDecimal.ZERO;
-    long numDays = ChronoUnit.DAYS.between(checkIn, checkOut);
+    ) {
+        BigDecimal totalPrice = BigDecimal.ZERO;
 
-    for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
-        BigDecimal dayPrice = basePrice;
+        for (LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+            BigDecimal dayPrice = basePrice;
 
-        for (PricingRule rule : rules) {
-            switch (rule.getRuleType()) {
-                case PEAK -> {
-                    double availabilityRatio = roomAvailabilityService.getHotelAvailabilityRatio(hotelId, date, date.plusDays(1));
-                    if (availabilityRatio < 0.2 && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
-                        dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+            for (PricingRule rule : rules) {
+                switch (rule.getRuleType()) {
+                    case PEAK -> {
+                        double availabilityRatio = roomAvailabilityService.getHotelAvailabilityRatio(hotelId, date, date.plusDays(1));
+                        if (availabilityRatio < 0.2 && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
+                            dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                        }
                     }
-                }
-                case WEEKEND -> {
-                    DayOfWeek dow = date.getDayOfWeek();
-                    if ((dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
-                        dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                    case WEEKEND -> {
+                        DayOfWeek dow = date.getDayOfWeek();
+                        if ((dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
+                            dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                        }
                     }
-                }
-                case LAST_MINUTE -> {
-                    long daysUntilCheckIn = ChronoUnit.DAYS.between(LocalDate.now(), checkIn);
-                    if (daysUntilCheckIn >= 0 && daysUntilCheckIn <= 3 && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
-                        dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                    case LAST_MINUTE -> {
+                        long daysUntilCheckIn = ChronoUnit.DAYS.between(LocalDate.now(clock), checkIn); // <-- Use injected clock
+                        if (daysUntilCheckIn >= 0 && daysUntilCheckIn <= 3 && rule.getRuleValue() != null && rule.getRuleValue() > 0) {
+                            dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                        }
                     }
-                }
-                default -> {
-                    // For SEASONAL, DISCOUNT, etc., check if this rule applies to this date
-                    if (rule.getStartDate() != null && rule.getEndDate() != null
-                            && (date.isBefore(rule.getStartDate()) || date.isAfter(rule.getEndDate()))) {
-                        // Rule does not apply to this date
-                        continue;
-                    }
-                    if (rule.getRuleValue() != null && rule.getRuleValue() != 0) {
-                        dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                    default -> {
+                        if (rule.getStartDate() != null && rule.getEndDate() != null
+                                && (date.isBefore(rule.getStartDate()) || date.isAfter(rule.getEndDate()))) {
+                            continue;
+                        }
+                        if (rule.getRuleValue() != null && rule.getRuleValue() != 0) {
+                            dayPrice = dayPrice.add(basePrice.multiply(BigDecimal.valueOf(rule.getRuleValue())).divide(BigDecimal.valueOf(100)));
+                        }
                     }
                 }
             }
+            totalPrice = totalPrice.add(dayPrice);
         }
-        totalPrice = totalPrice.add(dayPrice);
-    }
 
-    return totalPrice.setScale(2, RoundingMode.HALF_UP);
-}
+        return totalPrice.setScale(2, RoundingMode.HALF_UP);
+    }
 }
