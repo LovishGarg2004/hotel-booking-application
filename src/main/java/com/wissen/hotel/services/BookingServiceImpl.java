@@ -10,6 +10,9 @@ import com.wissen.hotel.utils.AuthUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,6 +29,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
     private final RoomAvailabilityService roomAvailabilityService;
+
+    private final EmailService emailService;
 
     private static final String BOOKING_NOT_FOUND = "Booking not found";
 
@@ -62,8 +67,30 @@ public class BookingServiceImpl implements BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
+        // Send booking confirmation email
+        emailService.sendBookingConfirmation(
+            savedBooking.getUser().getEmail(),
+            savedBooking.getBookingId().toString(),
+            savedBooking.getUser().getName()
+        );
+
         approveBooking(booking.getBookingId()); // Automatically approve the booking for simplicity in this example
         // Update room availability when a booking is approved
+
+        //Send booking success or approval to hotel owner if needed
+        emailService.sendBookingSuccessToUser(
+            savedBooking.getUser().getEmail(),
+            savedBooking.getBookingId().toString(),
+            savedBooking.getUser().getName()
+        );
+
+        //If you want to notify the hotel owner, use:
+        emailService.sendBookingApprovalToHotelOwner(
+            savedBooking.getRoom().getHotel().getOwner().getEmail(),
+            savedBooking.getBookingId().toString(),
+            savedBooking.getUser().getName()
+        );
+
         return mapToResponse(savedBooking);
     }
 
@@ -132,6 +159,13 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.CONFIRMED);  // Set new status
         bookingRepository.save(booking);
 
+        // Send booking approval to hotel owner
+        emailService.sendBookingApprovalToHotelOwner(
+            booking.getRoom().getHotel().getOwner().getEmail(),
+            booking.getBookingId().toString(),
+            booking.getUser().getName()
+        );
+
         // Update inventory (room availability) for each date between check-in and check-out (exclusive)
         LocalDate current = booking.getCheckIn();
         while (current.isBefore(booking.getCheckOut())) {
@@ -154,6 +188,13 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+
+        // Send booking cancellation email
+        emailService.sendBookingCancellation(
+            booking.getUser().getEmail(),
+            booking.getBookingId().toString(),
+            booking.getUser().getName()
+        );
 
         // Restore room availability for each date in the booking range
         LocalDate current = booking.getCheckIn();
@@ -213,9 +254,6 @@ public class BookingServiceImpl implements BookingService {
         for (Booking booking : existingBookings) {
             if (excludeBookingId != null && booking.getBookingId().equals(excludeBookingId)) continue;
             if (booking.getStatus() == BookingStatus.CANCELLED) continue;
-            boolean overlaps = !(checkOut.isBefore(booking.getCheckIn()) || checkOut.equals(booking.getCheckIn())
-                    || checkIn.isAfter(booking.getCheckOut()) || checkIn.equals(booking.getCheckOut()));
-            if (overlaps) return false;
         }
         return roomAvailabilityService.isRoomAvailableForRange(roomId, checkIn, checkOut);
     }

@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/test-email")
 public class TestEmailController {
 
-    private final EmailSender emailSender;
+    private final EmailServiceImpl emailSender;
 
     @Autowired
-    public TestEmailController(EmailSender emailSender) {
+    public TestEmailController(EmailServiceImpl emailSender) {
         this.emailSender = emailSender;
     }
 

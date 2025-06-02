@@ -7,11 +7,13 @@ import com.wissen.hotel.enums.BookingStatus;
 import com.wissen.hotel.exceptions.BadRequestException;
 import com.wissen.hotel.exceptions.ResourceNotFoundException;
 import com.wissen.hotel.models.Booking;
+import com.wissen.hotel.models.Hotel;
 import com.wissen.hotel.models.Room;
 import com.wissen.hotel.models.User;
 import com.wissen.hotel.repositories.BookingRepository;
 import com.wissen.hotel.repositories.RoomRepository;
 import com.wissen.hotel.services.BookingServiceImpl;
+import com.wissen.hotel.services.EmailService;
 import com.wissen.hotel.services.RoomAvailabilityService;
 import com.wissen.hotel.utils.AuthUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,25 +43,37 @@ class BookingServiceImplTest {
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
 
+    @Mock 
+    private EmailService emailService;
+
     @InjectMocks
     private BookingServiceImpl bookingService;
 
     private Room mockRoom;
+    private Hotel mockHotel;
     private User mockUser;
+    private User mockOwner;
     private Booking mockBooking;
 
     @BeforeEach
     void setUp() {
         UUID roomId = UUID.randomUUID();
+        UUID hotelId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
+
+        mockHotel = new Hotel();
+        mockHotel.setHotelId(hotelId);
 
         mockRoom = new Room();
         mockRoom.setRoomId(roomId);
         mockRoom.setBasePrice(BigDecimal.valueOf(100));
+        mockRoom.setHotel(mockHotel);
 
         mockUser = new User();
         mockUser.setUserId(userId);
+        mockHotel.setOwner(mockOwner);
 
         mockBooking = Booking.builder()
                 .bookingId(bookingId)
