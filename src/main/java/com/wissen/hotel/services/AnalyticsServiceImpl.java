@@ -6,6 +6,7 @@ import com.wissen.hotel.models.Room;
 import com.wissen.hotel.repositories.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final HotelService hotelService;
 
     @Override
+    @Transactional
     public HotelAnalyticsResponse getHotelAnalytics(UUID hotelId) {
         List<BookingResponse> bookings = bookingService.getBookingsForHotel(hotelId);
         List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotelId);
