@@ -2,8 +2,8 @@ package com.wissen.hotel.services;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import lombok.RequiredArgsConstructor;
+
 import java.util.UUID;
 import java.util.List;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,19 +27,22 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
 
     @Override
     public RoomAmenityResponse addAmenityToRoom(UUID roomId, UUID amenityId) {
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new EntityNotFoundException("Room not found"));
-        Amenity amenity = amenityRepository.findById(amenityId).orElseThrow(() -> new EntityNotFoundException("Amenity not found"));
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found"));
+        Amenity amenity = amenityRepository.findById(amenityId)
+                .orElseThrow(() -> new EntityNotFoundException("Amenity not found"));
         RoomAmenity roomAmenity = RoomAmenity.builder()
-            .room(room)
-            .amenity(amenity)
-            .build();
+                .room(room)
+                .amenity(amenity)
+                .build();
         return mapToResponse(roomAmenityRepository.save(roomAmenity));
     }
 
     @Override
     public void removeAmenityFromRoom(UUID roomId, UUID amenityId) {
-        RoomAmenity roomAmenity = roomAmenityRepository.findByRoom_RoomIdAndAmenity_AmenityId(roomId, amenityId)
-            .orElseThrow(() -> new EntityNotFoundException("Amenity not assigned to room"));
+        RoomAmenity roomAmenity = roomAmenityRepository
+                .findByRoom_RoomIdAndAmenity_AmenityId(roomId, amenityId)
+                .orElseThrow(() -> new EntityNotFoundException("Amenity not assigned to room"));
         roomAmenityRepository.delete(roomAmenity);
     }
 
@@ -47,22 +50,22 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
     @Transactional
     public List<AmenityResponse> getAmenitiesForRoom(UUID roomId) {
         return roomAmenityRepository.findByRoom_RoomId(roomId).stream()
-            .map(ra -> new AmenityResponse(
-                ra.getAmenity().getAmenityId(),
-                ra.getAmenity().getName(),
-                ra.getAmenity().getDescription()
-            ))
-            .distinct()
-            .toList();
+                .map(ra -> new AmenityResponse(
+                        ra.getAmenity().getAmenityId(),
+                        ra.getAmenity().getName(),
+                        ra.getAmenity().getDescription()
+                ))
+                .distinct()
+                .toList();
     }
 
     private RoomAmenityResponse mapToResponse(RoomAmenity roomAmenity) {
         return new RoomAmenityResponse(
-            roomAmenity.getId(),
-            roomAmenity.getRoom().getRoomId(),
-            roomAmenity.getAmenity().getAmenityId(),
-            roomAmenity.getAmenity().getName(),
-            roomAmenity.getAmenity().getDescription()
+                roomAmenity.getId(),
+                roomAmenity.getRoom().getRoomId(),
+                roomAmenity.getAmenity().getAmenityId(),
+                roomAmenity.getAmenity().getName(),
+                roomAmenity.getAmenity().getDescription()
         );
     }
 }

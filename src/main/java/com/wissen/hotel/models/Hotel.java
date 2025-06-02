@@ -40,4 +40,6 @@ public class Hotel {
     private BigDecimal longitude;
     private LocalDateTime createdAt;
     private boolean isApproved;
+    
+
 }

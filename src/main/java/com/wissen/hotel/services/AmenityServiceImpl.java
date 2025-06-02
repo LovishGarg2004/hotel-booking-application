@@ -4,6 +4,7 @@ import com.wissen.hotel.dtos.AmenityResponse;
 import com.wissen.hotel.dtos.CreateOrUpdateAmenityRequest;
 import com.wissen.hotel.models.Amenity;
 import com.wissen.hotel.repositories.AmenityRepository;
+import com.wissen.hotel.exceptions.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,7 @@ public class AmenityServiceImpl implements AmenityService {
     @Override
     public AmenityResponse getAmenityById(UUID id) {
         Amenity amenity = amenityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Amenity not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
         return mapToDto(amenity);
     }
 
@@ -52,7 +53,7 @@ public class AmenityServiceImpl implements AmenityService {
     @Override
     public AmenityResponse updateAmenity(UUID id, CreateOrUpdateAmenityRequest request) {
         Amenity amenity = amenityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Amenity not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
 
         amenity.setName(request.getName());
         amenity.setDescription(request.getDescription());
@@ -63,7 +64,7 @@ public class AmenityServiceImpl implements AmenityService {
     @Override
     public void deleteAmenity(UUID id) {
         if (!amenityRepository.existsById(id)) {
-            throw new RuntimeException("Amenity not found");
+            throw new ResourceNotFoundException("Amenity not found");
         }
         amenityRepository.deleteById(id);
     }
