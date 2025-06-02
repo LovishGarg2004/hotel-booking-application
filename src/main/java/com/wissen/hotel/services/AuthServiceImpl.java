@@ -6,9 +6,11 @@ import com.wissen.hotel.exceptions.*;
 import com.wissen.hotel.models.User;
 import com.wissen.hotel.repositories.UserRepository;
 import com.wissen.hotel.utils.JwtUtil;
+import com.wissen.hotel.services.EmailServiceImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 
@@ -23,12 +25,12 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final EmailSender emailSender;
+    private final EmailService emailSender;
 
     @Value("${app.reset-password-url:}")
     private String resetPasswordUrl;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailSender emailSender) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailService emailSender) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -55,16 +57,11 @@ public class AuthServiceImpl implements AuthService {
         user.setEmailVerified(false);
 
         String token = jwtUtil.generateEmailVerificationToken(user.getEmail());
-        emailSender.sendVerificationEmail(user.getEmail(), token);
         userRepository.save(user);
-
-        if (user.getRole() == UserRole.HOTEL_OWNER) {
-            try {
-                emailSender.sendWelcomeEmail(user.getEmail(), user.getName());
-            } catch (Exception ignored) {
-                // Continue with registration even if welcome email fails
-            }
-        }
+        emailSender.sendVerificationEmail(user.getEmail(), token);
+        
+        logger.info("User registered successfully with email: {}", request.getEmail());
+        
     }
 
     @Override
@@ -76,26 +73,49 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
-        // Uncomment if you want to enforce email verification
-        // if (!user.isEmailVerified()) {
-        //     throw new EmailNotVerifiedException("Please verify your email before logging in");
-        // }
+            if (!user.isEmailVerified()) {
+                logger.warn("Login attempt with unverified email: {}", request.getEmail());
+                throw new EmailNotVerifiedException("Please verify your email before logging in");
+            }
 
         String token = jwtUtil.generateToken(user);
         return new LoginResponse(token, user.getRole().toString());
     }
 
     @Override
-    public void verifyEmail(String token) {
-        String email = jwtUtil.extractEmail(token);
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-
-        if (user.isEmailVerified()) {
-            throw new EmailAlreadyVerifiedException("Email is already verified.");
+    public ResponseEntity<String> verifyEmail(String token) {
+        try {
+            logger.info("Verifying email with token: {}", token);
+            // Decode the token to extract the email
+            String email = jwtUtil.extractEmail(token);
+            logger.debug("Extracted email from token: {}", email);
+            // Find the user by email
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+            logger.info("User found for email: {}", email);
+            // Check if the email is already verified
+            if (user.isEmailVerified()) {
+                logger.warn("Email is already verified for user: {}", email);
+                throw new EmailAlreadyVerifiedException("Email is already verified.");
+            }
+            // Mark the email as verified
+            user.setEmailVerified(true);
+            userRepository.save(user);
+            logger.info("Email verified successfully for user: {}", email);
+            //Welcome email after verification
+            logger.info("Sending welcome email to user: {}", email);
+            emailSender.sendWelcomeEmail(email, user.getName(), user.getRole());
+            if (user.getRole() == UserRole.HOTEL_OWNER) {
+                return ResponseEntity.ok("Email verified successfully! Welcome, hotel owner! You can now list your properties.");
+            } else {
+                return ResponseEntity.ok("Email verified successfully! Welcome to Hotel Booking Platform!");
+            }
+        } catch (Exception ex) {
+            logger.error("Error verifying email: {}", ex.getMessage(), ex);
+            return ResponseEntity
+                .status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("An error occurred: " + ex.getMessage());
         }
-        user.setEmailVerified(true);
-        userRepository.save(user);
     }
 
     @Override

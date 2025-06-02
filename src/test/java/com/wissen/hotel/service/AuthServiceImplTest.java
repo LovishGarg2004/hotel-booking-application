@@ -20,7 +20,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.wissen.hotel.services.AuthServiceImpl;
-import com.wissen.hotel.services.EmailSender;
+import com.wissen.hotel.services.EmailServiceImpl;
 
 class AuthServiceImplTest {
 
@@ -28,14 +28,14 @@ class AuthServiceImplTest {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private JwtUtil jwtUtil;
-    private EmailSender emailSender;
+    private EmailServiceImpl emailSender;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtUtil = mock(JwtUtil.class);
-        emailSender = mock(EmailSender.class);
+        emailSender = mock(EmailServiceImpl.class);
         authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtUtil, emailSender);
     }
 

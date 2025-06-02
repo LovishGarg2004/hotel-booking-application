@@ -6,6 +6,8 @@ import com.wissen.hotel.repositories.*;
 import com.wissen.hotel.utils.AuthUtil;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class HotelServiceImpl implements HotelService {
     private final PricingEngineService pricingEngineService;
     private static final String HOTEL_NOT_FOUND = "Hotel not found";
 
+    private final EmailService emailService;
+
     @Override
     public List<HotelResponse> getAllHotels(String city, int page, int size) {
         List<HotelResponse> hotels = hotelRepository.findAll().stream()
@@ -52,6 +56,8 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public HotelResponse createHotel(CreateHotelRequest request) {
+        logger.info("Creating hotel: {}", request.getName());
+        var currentUser = AuthUtil.getCurrentUser();
         Hotel hotel = Hotel.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -63,9 +69,27 @@ public class HotelServiceImpl implements HotelService {
                 .longitude(request.getLongitude())
                 .createdAt(LocalDateTime.now())
                 .isApproved(false)
-                .owner(AuthUtil.getCurrentUser())
+                .owner(currentUser) // If current user logic available
                 .build();
         Hotel saved = hotelRepository.save(hotel);
+        logger.debug("Hotel created with ID: {}", saved.getHotelId());
+
+        try {
+            emailService.sendHotelRegistrationSuccessful(
+                currentUser.getEmail(),
+                saved.getName(),
+                currentUser.getName()
+            );
+            emailService.sendAdminHotelRegistrationAlert(
+                "admin@hotelbooking.com", // or fetch admin email from config/db
+                saved.getName(),
+                currentUser.getEmail()
+            );
+        } catch (Exception e) {
+            logger.error("Failed to send registration emails: {}", e.getMessage(), e);
+            // Optionally rethrow or handle as needed
+        }
+    
         return mapToResponse(saved);
     }
 
@@ -97,6 +121,17 @@ public class HotelServiceImpl implements HotelService {
                 .orElseThrow(() -> new RuntimeException(HOTEL_NOT_FOUND));
         hotel.setApproved(true);
         Hotel approved = hotelRepository.save(hotel);
+        logger.debug("Hotel approved: {}", approved.getHotelId());
+
+        try {
+            emailService.sendHotelApprovalNotification(
+                approved.getOwner().getEmail(),
+                approved.getName()
+            );
+        } catch (Exception e) {
+            logger.error("Failed to send approval email: {}", e.getMessage(), e);
+            // Optionally rethrow or handle as needed
+        }
         return mapToResponse(approved);
     }
 
