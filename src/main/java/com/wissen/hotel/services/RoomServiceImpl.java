@@ -11,6 +11,7 @@ import com.wissen.hotel.repositories.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -25,72 +26,97 @@ public class RoomServiceImpl implements RoomService {
     private final RoomAmenityRepository roomAmenityRepository;
     private final AmenityRepository amenityRepository;
     private final BookingService bookingService;
+    private final RoomAmenityService roomAmenityService;
 
     private static final String ROOM_NOT_FOUND = "Room not found";
 
     @Override
     public RoomResponse createRoom(UUID hotelId, CreateRoomRequest request) {
-        log.info("Creating room in hotel {}", hotelId);
-        Hotel hotel = hotelRepository.findById(hotelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
+        try {
+            log.info("Creating room in hotel {}", hotelId);
+            Hotel hotel = hotelRepository.findById(hotelId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
 
-        if (!hotel.isApproved()) {
-            throw new IllegalStateException("Cannot create room in an unapproved hotel.");
+            if (!hotel.isApproved()) {
+                throw new IllegalStateException("Cannot create room in an unapproved hotel.");
+            }
+
+            Room room = Room.builder()
+                    .hotel(hotel)
+                    .roomType(request.getRoomType())
+                    .capacity(request.getCapacity())
+                    .basePrice(request.getBasePrice())
+                    .totalRooms(request.getTotalRooms())
+                    .build();
+
+            Room savedRoom = roomRepository.save(room);
+            if (savedRoom == null) {
+                throw new IllegalStateException("Failed to save room. The repository returned null.");
+            }
+
+            return mapToResponse(savedRoom);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create room. Please try again later.", e);
         }
-
-        Room room = Room.builder()
-                .hotel(hotel)
-                .roomType(request.getRoomType())
-                .capacity(request.getCapacity())
-                .basePrice(request.getBasePrice())
-                .totalRooms(request.getTotalRooms())
-                .build();
-
-        Room savedRoom = roomRepository.save(room);
-        if (savedRoom == null) {
-            throw new IllegalStateException("Failed to save room. The repository returned null.");
-        }
-
-        return mapToResponse(savedRoom);
     }
 
     @Override
     public RoomResponse getRoomById(UUID roomId) {
-        log.info("Fetching room details for roomId {}", roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
-        return mapToResponse(room);
+        try {
+            log.info("Fetching room details for roomId {}", roomId);
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
+            return mapToResponse(room);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch room details. Please try again later.", e);
+        }
     }
 
     @Override
     public RoomResponse updateRoom(UUID roomId, UpdateRoomRequest request) {
-        log.info("Updating room {}", roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
+        try {
+            log.info("Updating room {}", roomId);
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
-        if (!room.getHotel().isApproved()) {
-            throw new IllegalStateException("Cannot update room of an unapproved hotel.");
+            if (!room.getHotel().isApproved()) {
+                throw new IllegalStateException("Cannot update room of an unapproved hotel.");
+            }
+
+            room.setRoomType(request.getRoomType());
+            room.setCapacity(request.getCapacity());
+            room.setBasePrice(request.getBasePrice());
+            room.setTotalRooms(request.getTotalRooms());
+
+            return mapToResponse(roomRepository.save(room));
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update room. Please try again later.", e);
         }
-
-        room.setRoomType(request.getRoomType());
-        room.setCapacity(request.getCapacity());
-        room.setBasePrice(request.getBasePrice());
-        room.setTotalRooms(request.getTotalRooms());
-
-        return mapToResponse(roomRepository.save(room));
     }
 
     @Override
     public void deleteRoom(UUID roomId) {
-        log.info("Deleting room {}", roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
+        try {
+            log.info("Deleting room {}", roomId);
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
-        if (!room.getHotel().isApproved()) {
-            throw new IllegalStateException("Cannot delete room of an unapproved hotel.");
+            if (!room.getHotel().isApproved()) {
+                throw new IllegalStateException("Cannot delete room of an unapproved hotel.");
+            }
+
+            roomRepository.delete(room);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete room. Please try again later.", e);
         }
-
-        roomRepository.delete(room);
     }
 
     @Override
@@ -105,38 +131,44 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public RoomResponse updateRoomAmenities(UUID roomId, List<String> amenities) {
-        log.info("Updating room amenities for room {}", roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
+        try {
+            log.info("Updating room amenities for room {}", roomId);
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException(ROOM_NOT_FOUND));
 
-        if (!room.getHotel().isApproved()) {
-            throw new IllegalStateException("Cannot update amenities of a room in an unapproved hotel.");
+            if (!room.getHotel().isApproved()) {
+                throw new IllegalStateException("Cannot update amenities of a room in an unapproved hotel.");
+            }
+
+            room.getRoomAmenities().clear();
+
+            List<RoomAmenity> updatedAmenities = amenities.stream()
+                    .map(amenityName -> {
+                        Amenity amenity = amenityRepository.findByName(amenityName);
+                        if (amenity == null) {
+                            throw new ResourceNotFoundException("Amenity not found: " + amenityName);
+                        }
+                        return RoomAmenity.builder()
+                                .room(room)
+                                .amenity(amenity)
+                                .build();
+                    })
+                    .toList();
+
+            room.getRoomAmenities().addAll(updatedAmenities);
+            roomAmenityRepository.saveAll(updatedAmenities);
+
+            Room savedRoom = roomRepository.save(room);
+            if (savedRoom == null) {
+                throw new IllegalStateException("Failed to save room. The repository returned null.");
+            }
+
+            return mapToResponse(savedRoom);
+        } catch (ResourceNotFoundException | IllegalStateException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update room amenities. Please try again later.", e);
         }
-
-        room.getRoomAmenities().clear();
-
-        List<RoomAmenity> updatedAmenities = amenities.stream()
-                .map(amenityName -> {
-                    Amenity amenity = amenityRepository.findByName(amenityName);
-                    if (amenity == null) {
-                        throw new ResourceNotFoundException("Amenity not found: " + amenityName);
-                    }
-                    return RoomAmenity.builder()
-                            .room(room)
-                            .amenity(amenity)
-                            .build();
-                })
-                .toList();
-
-        room.getRoomAmenities().addAll(updatedAmenities);
-        roomAmenityRepository.saveAll(updatedAmenities);
-
-        Room savedRoom = roomRepository.save(room);
-        if (savedRoom == null) {
-            throw new IllegalStateException("Failed to save room. The repository returned null.");
-        }
-
-        return mapToResponse(savedRoom);
     }
 
     @Override
@@ -153,9 +185,7 @@ public class RoomServiceImpl implements RoomService {
             throw new IllegalArgumentException("Room cannot be null");
         }
 
-        List<String> amenities = room.getRoomAmenities() != null
-                ? room.getRoomAmenities().stream().map(ra -> ra.getAmenity().getName()).toList()
-                : new ArrayList<>();
+        List<AmenityResponse> amenities = roomAmenityService.getAmenitiesForRoom(room.getRoomId());
 
         return RoomResponse.builder()
                 .roomId(room.getRoomId())

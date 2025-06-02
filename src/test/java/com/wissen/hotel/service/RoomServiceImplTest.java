@@ -7,6 +7,7 @@ import com.wissen.hotel.models.*;
 import com.wissen.hotel.repositories.*;
 import com.wissen.hotel.services.BookingService;
 import com.wissen.hotel.services.RoomServiceImpl;
+import com.wissen.hotel.services.RoomAmenityService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,8 @@ class RoomServiceImplTest {
     private AmenityRepository amenityRepository;
     @Mock
     private BookingService bookingService;
+    @Mock
+    private RoomAmenityService roomAmenityService;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -154,12 +157,18 @@ class RoomServiceImplTest {
         when(roomAmenityRepository.saveAll(anyList())).thenReturn(Collections.emptyList()); // Mock saveAll to avoid null pointer
         when(roomRepository.save(any(Room.class))).thenReturn(existingRoom); // Mock roomRepository.save
 
+        List<AmenityResponse> amenityResponses = List.of(
+            new AmenityResponse(UUID.randomUUID(), "WiFi", "Wireless Internet"),
+            new AmenityResponse(UUID.randomUUID(), "TV", "Television")
+        );
+        when(roomAmenityService.getAmenitiesForRoom(roomId)).thenReturn(amenityResponses);
+
         RoomResponse response = roomService.updateRoomAmenities(roomId, amenities);
 
         assertNotNull(response);
         assertEquals(2, response.getAmenities().size());
-        assertTrue(response.getAmenities().contains("WiFi"));
-        assertTrue(response.getAmenities().contains("TV"));
+        assertTrue(response.getAmenities().stream().anyMatch(a -> a.getName().equals("WiFi")));
+        assertTrue(response.getAmenities().stream().anyMatch(a -> a.getName().equals("TV")));
         verify(roomAmenityRepository).saveAll(anyList());
     }
 

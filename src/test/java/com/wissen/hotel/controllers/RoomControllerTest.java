@@ -37,11 +37,15 @@ class RoomControllerTest {
     private UUID roomId;
     private UUID hotelId;
     private RoomResponse roomResponse;
+    private AmenityResponse amenityWiFi;
+    private AmenityResponse amenityTV;
 
     @BeforeEach
     void setUp() {
         roomId = UUID.randomUUID();
         hotelId = UUID.randomUUID();
+        amenityWiFi = new AmenityResponse(UUID.randomUUID(), "WiFi", "Wireless Internet");
+        amenityTV = new AmenityResponse(UUID.randomUUID(), "TV", "Television");
         roomResponse = RoomResponse.builder()
                 .roomId(roomId)
                 .hotelId(hotelId)
@@ -49,7 +53,7 @@ class RoomControllerTest {
                 .capacity(2)
                 .basePrice(BigDecimal.valueOf(100.00))
                 .totalRooms(10)
-                .amenities(Arrays.asList("WiFi", "TV"))
+                .amenities(Arrays.asList(amenityWiFi, amenityTV))
                 .build();
     }
 
@@ -65,7 +69,9 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.capacity").value(2))
                 .andExpect(jsonPath("$.basePrice").value(100.00))
                 .andExpect(jsonPath("$.totalRooms").value(10))
-                .andExpect(jsonPath("$.amenities").isArray());
+                .andExpect(jsonPath("$.amenities").isArray())
+                .andExpect(jsonPath("$.amenities[0].name").value("WiFi"))
+                .andExpect(jsonPath("$.amenities[1].name").value("TV"));
     }
 
     @Test
@@ -138,7 +144,10 @@ class RoomControllerTest {
                                 ["WiFi", "TV"]
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId").value(roomId.toString()));
+                .andExpect(jsonPath("$.roomId").value(roomId.toString()))
+                .andExpect(jsonPath("$.amenities").isArray())
+                .andExpect(jsonPath("$.amenities[0].name").value("WiFi"))
+                .andExpect(jsonPath("$.amenities[1].name").value("TV"));
     }
 
     @Test

@@ -11,6 +11,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(
+    name = "room_amenity",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "amenity_id"})
+)
 public class RoomAmenity {
     @Id
     @GeneratedValue

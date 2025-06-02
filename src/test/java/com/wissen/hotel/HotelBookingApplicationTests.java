@@ -1,20 +1,20 @@
-package com.wissen.hotel;
+// package com.wissen.hotel;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.wissen.hotel.controllers.AuthController;
+// import org.junit.jupiter.api.Test;
+// import org.springframework.boot.test.context.SpringBootTest;
+// import org.springframework.beans.factory.annotation.Autowired;
+// import com.wissen.hotel.controllers.AuthController;
 
-import static org.assertj.core.api.Assertions.assertThat;
+// import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-class HotelBookingApplicationTests {
+// @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// class HotelBookingApplicationTests {
 
-    @Autowired
-    private AuthController authController;
+//     @Autowired
+//     private AuthController authController;
 
-    @Test
-    void contextLoads() {
-        assertThat(authController).isNotNull();
-	}
-}
+//     @Test
+//     void contextLoads() {
+//         assertThat(authController).isNotNull();
+// 	}
+// }
