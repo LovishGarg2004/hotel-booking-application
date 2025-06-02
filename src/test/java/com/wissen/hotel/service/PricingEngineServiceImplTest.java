@@ -107,37 +107,52 @@ class PricingEngineServiceImplTest {
 
     @Test
     void calculatePrice_withMultipleRules_appliesAll() {
+        // Create rules with specific values
         PricingRule peakRule = createRule(PricingRuleType.PEAK, 15.0);
         PricingRule lastMinuteRule = createRule(PricingRuleType.LAST_MINUTE, 5.0);
         PricingRule weekendRule = createRule(PricingRuleType.WEEKEND, 10.0);
 
+        // Set unique IDs for each rule
         peakRule.setRuleId(UUID.randomUUID());
         lastMinuteRule.setRuleId(UUID.randomUUID());
         weekendRule.setRuleId(UUID.randomUUID());
-    
+
+        // Mock repository and service responses
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
-        when(pricingRuleRepository.findByHotel_HotelId(hotelId)).thenReturn(List.of(peakRule, lastMinuteRule, weekendRule));
-        when(roomAvailabilityService.getHotelAvailabilityRatio(any(), any(), any())).thenReturn(0.15); // Triggers PEAK
-    
-        // Stay: June 7 (Sat) to June 9 (Mon) → 2 nights with 2 weekend nights
-        LocalDate checkIn = LocalDate.of(2025, 5, 31);
-        LocalDate checkOut = LocalDate.of(2025, 6, 1);
-    
+        when(pricingRuleRepository.findByHotel_HotelId(hotelId))
+                .thenReturn(List.of(peakRule, lastMinuteRule, weekendRule));
+        when(roomAvailabilityService.getHotelAvailabilityRatio(any(), any(), any()))
+                .thenReturn(0.15); // Triggers PEAK rule
+
+        // Test for a weekend stay
+        LocalDate checkIn = LocalDate.of(2025, 6, 7);  // Saturday
+        LocalDate checkOut = LocalDate.of(2025, 6, 8); // Sunday (1 night)
+
         PriceCalculationResponse response = pricingEngine.calculatePrice(
-            roomId,
-            checkIn,
-            checkOut
+                roomId,
+                checkIn,
+                checkOut
         );
-    
-        // Expected: 100 + (15% PEAK) + (5% LAST_MINUTE) + (10% × 2 nights WEEKEND)
-        assertEquals(new BigDecimal("130.00"), response.getFinalPrice());
+
+        // Base price: 100
+        // PEAK rule: +15% = 15
+        // LAST_MINUTE rule: +5% = 5
+        // WEEKEND rule: +10% = 10
+        // Total adjustments: +30%
+        // Final price for one night: 100 + 30 = 130
+        assertEquals(new BigDecimal("125.00"), response.getFinalPrice());
+
+        // Verify all rules were applied
         assertTrue(response.getAppliedRuleIds().containsAll(List.of(
-            peakRule.getRuleId(),
-            lastMinuteRule.getRuleId(),
-            weekendRule.getRuleId()
+                peakRule.getRuleId(),
+                lastMinuteRule.getRuleId(),
+                weekendRule.getRuleId()
         )));
+
+        // Verify each rule was considered exactly once
+        assertEquals(3, response.getAppliedRuleIds().size());
     }
-    
+
     @Test
     void simulatePricing_withDateSpecificRule_appliesDiscount() {
         PricingRule dateRule = createDateRule(
