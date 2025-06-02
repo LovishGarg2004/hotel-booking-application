@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Stay Wise - Hotel Owner</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .header {
+            background-color: #1e40af;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            font-family: 'Playfair Display', Georgia, serif;
+            margin: 0;
+            font-size: 2rem;
+        }
+        .welcome-icon {
+            font-size: 48px;
+            margin: 1rem 0;
+        }
+        .content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .features {
+            background-color: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin: 1.5rem 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            color: #1e40af;
+        }
+        .getting-started {
+            background-color: #f0f9ff;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 1.5rem;
+            border-left: 4px solid #1e40af;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #1e40af;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        .support-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            font-size: 0.875rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Welcome to Stay Wise!</h1>
+        <div class="welcome-icon">🏨</div>
+    </div>
+    <div class="content">
+        <p>Dear <strong th:text="${name}">Hotel Owner</strong>,</p>
+
+        <p>We're thrilled to welcome you to Stay Wise! You've taken the first step toward growing your hospitality business with us. As a hotel owner on our platform, you'll have access to powerful tools and features designed to help you succeed.</p>
+
+        <div class="features">
+            <h2>What You Can Do:</h2>
+            <div class="feature-item">
+                <span class="feature-icon">📍</span>
+                <div>
+                    <strong>List Your Properties</strong>
+                    <p>Showcase your hotels with detailed descriptions, high-quality photos, and competitive pricing.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">📊</span>
+                <div>
+                    <strong>Manage Bookings</strong>
+                    <p>Handle reservations, check-ins, and guest communications all in one place.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">💰</span>
+                <div>
+                    <strong>Dynamic Pricing</strong>
+                    <p>Set flexible rates and special offers to maximize your revenue.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="getting-started">
+            <h2>Getting Started</h2>
+            <ol>
+                <li>Complete your hotel profile</li>
+                <li>Add rooms and amenities</li>
+                <li>Set your pricing strategy</li>
+                <li>Start accepting bookings</li>
+            </ol>
+        </div>
+
+        <a href="https://staywise.com/dashboard" class="cta-button">Go to Your Dashboard</a>
+
+        <div class="support-section">
+            <h3>Need Help?</h3>
+            <p>Our support team is here to assist you:</p>
+            <ul>
+                <li>Email: support@staywise.com</li>
+                <li>Phone: +1 (555) 123-4567</li>
+                <li>Help Center: help.staywise.com</li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer">
+        <p>© 2024 Stay Wise. All rights reserved.</p>
+        <p>You're receiving this email because you registered as a hotel owner on Stay Wise using <span th:text="${email}">email@example.com</span></p>
+        <p>For any questions, contact our support team.</p>
+    </div>
+</div>
+</body>
+</html>

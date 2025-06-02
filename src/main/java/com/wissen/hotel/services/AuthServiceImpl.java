@@ -72,11 +72,11 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid email or password");
         }
-
-            if (!user.isEmailVerified()) {
-                logger.warn("Login attempt with unverified email: {}", request.getEmail());
-                throw new EmailNotVerifiedException("Please verify your email before logging in");
-            }
+//
+//            if (!user.isEmailVerified()) {
+//                logger.warn("Login attempt with unverified email: {}", request.getEmail());
+//                throw new EmailNotVerifiedException("Please verify your email before logging in");
+//            }
 
         String token = jwtUtil.generateToken(user);
         return new LoginResponse(token, user.getRole().toString());
