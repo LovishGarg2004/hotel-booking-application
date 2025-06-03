@@ -145,7 +145,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh """
-                    docker build --platform linux/arm64 -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
+                    docker build --platform linux/amd64 -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
                     docker tag ${DOCKERHUB_REPO}:${BUILD_NUMBER} ${DOCKERHUB_REPO}:latest
                 """
             }
