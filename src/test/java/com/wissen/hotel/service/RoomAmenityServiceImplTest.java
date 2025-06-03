@@ -1,14 +1,14 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.services.RoomAmenityServiceImpl;
-import com.wissen.hotel.dtos.AmenityResponse;
-import com.wissen.hotel.dtos.RoomAmenityResponse;
-import com.wissen.hotel.models.Amenity;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.models.RoomAmenity;
-import com.wissen.hotel.repositories.AmenityRepository;
-import com.wissen.hotel.repositories.RoomAmenityRepository;
-import com.wissen.hotel.repositories.RoomRepository;
+import com.wissen.hotel.service.impl.RoomAmenityServiceImpl;
+import com.wissen.hotel.dto.response.AmenityResponse;
+import com.wissen.hotel.dto.response.RoomAmenityResponse;
+import com.wissen.hotel.model.Amenity;
+import com.wissen.hotel.model.Room;
+import com.wissen.hotel.model.RoomAmenity;
+import com.wissen.hotel.repository.AmenityRepository;
+import com.wissen.hotel.repository.RoomAmenityRepository;
+import com.wissen.hotel.repository.RoomRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;

@@ -5,11 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 
 import static org.mockito.Mockito.*;
 
-import com.wissen.hotel.dtos.*;
-import com.wissen.hotel.models.*;
-import com.wissen.hotel.repositories.*;
-import com.wissen.hotel.services.*;
-import com.wissen.hotel.utils.AuthUtil;
+import com.wissen.hotel.dto.request.*;
+import com.wissen.hotel.dto.response.*;
+import com.wissen.hotel.model.*;
+import com.wissen.hotel.repository.*;
+import com.wissen.hotel.service.impl.HotelServiceImpl;
+import com.wissen.hotel.util.AuthUtil;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

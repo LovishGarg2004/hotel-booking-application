@@ -1,14 +1,14 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.CreateReviewRequest;
-import com.wissen.hotel.dtos.ReviewResponse;
+import com.wissen.hotel.dto.request.CreateReviewRequest;
+import com.wissen.hotel.dto.response.ReviewResponse;
 import com.wissen.hotel.enums.UserRole;
-import com.wissen.hotel.exceptions.ResourceNotFoundException;
-import com.wissen.hotel.models.*;
-import com.wissen.hotel.repositories.HotelRepository;
-import com.wissen.hotel.repositories.ReviewRepository;
-import com.wissen.hotel.services.ReviewServiceImpl;
-import com.wissen.hotel.utils.AuthUtil;
+import com.wissen.hotel.exception.ResourceNotFoundException;
+import com.wissen.hotel.model.*;
+import com.wissen.hotel.repository.HotelRepository;
+import com.wissen.hotel.repository.ReviewRepository;
+import com.wissen.hotel.service.impl.ReviewServiceImpl;
+import com.wissen.hotel.util.AuthUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

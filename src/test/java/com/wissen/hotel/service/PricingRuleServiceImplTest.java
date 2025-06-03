@@ -1,13 +1,13 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.PricingRuleRequest;
+import com.wissen.hotel.dto.request.PricingRuleRequest;
 import com.wissen.hotel.enums.PricingRuleType;
-import com.wissen.hotel.exceptions.EntityNotFoundException;
-import com.wissen.hotel.models.Hotel;
-import com.wissen.hotel.models.PricingRule;
-import com.wissen.hotel.repositories.HotelRepository;
-import com.wissen.hotel.repositories.PricingRuleRepository;
-import com.wissen.hotel.services.PricingRuleServiceImpl;
+import com.wissen.hotel.exception.EntityNotFoundException;
+import com.wissen.hotel.model.Hotel;
+import com.wissen.hotel.model.PricingRule;
+import com.wissen.hotel.repository.HotelRepository;
+import com.wissen.hotel.repository.PricingRuleRepository;
+import com.wissen.hotel.service.impl.PricingRuleServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,14 +1,12 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.*;
+
+import com.wissen.hotel.dto.response.*;
 import com.wissen.hotel.enums.BookingStatus;
 import com.wissen.hotel.enums.RoomType;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.repositories.RoomRepository;
-import com.wissen.hotel.services.AnalyticsService;
-import com.wissen.hotel.services.AnalyticsServiceImpl;
-import com.wissen.hotel.services.BookingService;
-import com.wissen.hotel.services.HotelService;
+import com.wissen.hotel.model.Room;
+import com.wissen.hotel.repository.RoomRepository;
+import com.wissen.hotel.service.impl.AnalyticsServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

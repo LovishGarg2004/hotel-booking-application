@@ -1,18 +1,18 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.UpdateUserRequest;
-import com.wissen.hotel.dtos.UpdateUserRoleRequest;
-import com.wissen.hotel.dtos.UserResponse;
+import com.wissen.hotel.dto.request.UpdateUserRequest;
+import com.wissen.hotel.dto.request.UpdateUserRoleRequest;
+import com.wissen.hotel.dto.response.UserResponse;
 import com.wissen.hotel.enums.UserRole;
-import com.wissen.hotel.dtos.BookingResponse;
-import com.wissen.hotel.models.Booking;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.models.User;
-import com.wissen.hotel.repositories.BookingRepository;
-import com.wissen.hotel.repositories.UserRepository;
-import com.wissen.hotel.services.UserServiceImpl;
-import com.wissen.hotel.utils.AuthUtil;
-import com.wissen.hotel.exceptions.UserServiceException;
+import com.wissen.hotel.dto.response.BookingResponse;
+import com.wissen.hotel.model.Booking;
+import com.wissen.hotel.model.Room;
+import com.wissen.hotel.model.User;
+import com.wissen.hotel.repository.BookingRepository;
+import com.wissen.hotel.repository.UserRepository;
+import com.wissen.hotel.service.impl.UserServiceImpl;
+import com.wissen.hotel.util.AuthUtil;
+import com.wissen.hotel.exception.UserServiceException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

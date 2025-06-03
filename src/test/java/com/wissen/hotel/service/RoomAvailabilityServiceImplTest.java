@@ -1,13 +1,13 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.BlockRoomRequest;
-import com.wissen.hotel.dtos.UpdateInventoryRequest;
-import com.wissen.hotel.exceptions.ResourceNotFoundException;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.models.RoomAvailability;
-import com.wissen.hotel.repositories.RoomAvailabilityRepository;
-import com.wissen.hotel.repositories.RoomRepository;
-import com.wissen.hotel.services.RoomAvailabilityServiceImpl;
+import com.wissen.hotel.dto.request.BlockRoomRequest;
+import com.wissen.hotel.dto.request.UpdateInventoryRequest;
+import com.wissen.hotel.exception.ResourceNotFoundException;
+import com.wissen.hotel.model.Room;
+import com.wissen.hotel.model.RoomAvailability;
+import com.wissen.hotel.repository.RoomAvailabilityRepository;
+import com.wissen.hotel.repository.RoomRepository;
+import com.wissen.hotel.service.impl.RoomAvailabilityServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

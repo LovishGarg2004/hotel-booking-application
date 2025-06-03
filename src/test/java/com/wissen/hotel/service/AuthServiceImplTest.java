@@ -1,26 +1,24 @@
 package com.wissen.hotel.service;
-import com.wissen.hotel.dtos.*;
+import com.wissen.hotel.dto.request.*;
 import com.wissen.hotel.enums.UserRole;
-import com.wissen.hotel.exceptions.*;
-import com.wissen.hotel.models.User;
-import com.wissen.hotel.repositories.UserRepository;
-import com.wissen.hotel.utils.JwtUtil;
+import com.wissen.hotel.exception.*;
+import com.wissen.hotel.model.User;
+import com.wissen.hotel.repository.UserRepository;
+import com.wissen.hotel.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.wissen.hotel.services.AuthServiceImpl;
-import com.wissen.hotel.services.EmailServiceImpl;
+import com.wissen.hotel.service.impl.AuthServiceImpl;
+import com.wissen.hotel.service.impl.EmailServiceImpl;
 
 class AuthServiceImplTest {
 
@@ -139,9 +137,12 @@ class AuthServiceImplTest {
         when(jwtUtil.extractEmail(token)).thenReturn(email);
         when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
-        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> authService.verifyEmail(token));
-        assertEquals("User not found for email: " + email, exception.getMessage());
+        ResponseEntity<String> response = authService.verifyEmail(token);
+
+        assertEquals(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertTrue(response.getBody().contains("User not found for email: " + email));
     }
+
 
     @Test
     void testResetPassword_Success() {

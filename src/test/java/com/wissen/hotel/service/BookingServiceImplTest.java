@@ -1,21 +1,15 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.BookingResponse;
-import com.wissen.hotel.dtos.CreateBookingRequest;
-import com.wissen.hotel.dtos.UpdateBookingRequest;
+import com.wissen.hotel.dto.response.BookingResponse;
+import com.wissen.hotel.dto.request.CreateBookingRequest;
+import com.wissen.hotel.dto.request.UpdateBookingRequest;
 import com.wissen.hotel.enums.BookingStatus;
-import com.wissen.hotel.exceptions.BadRequestException;
-import com.wissen.hotel.exceptions.ResourceNotFoundException;
-import com.wissen.hotel.models.Booking;
-import com.wissen.hotel.models.Hotel;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.models.User;
-import com.wissen.hotel.repositories.BookingRepository;
-import com.wissen.hotel.repositories.RoomRepository;
-import com.wissen.hotel.services.BookingServiceImpl;
-import com.wissen.hotel.services.EmailService;
-import com.wissen.hotel.services.RoomAvailabilityService;
-import com.wissen.hotel.utils.AuthUtil;
+import com.wissen.hotel.exception.*;
+import com.wissen.hotel.model.*;
+import com.wissen.hotel.repository.BookingRepository;
+import com.wissen.hotel.repository.RoomRepository;
+import com.wissen.hotel.service.impl.BookingServiceImpl;
+import com.wissen.hotel.util.AuthUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +23,8 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,7 +39,7 @@ class BookingServiceImplTest {
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
 
-    @Mock 
+    @Mock
     private EmailService emailService;
 
     @InjectMocks
@@ -62,6 +58,11 @@ class BookingServiceImplTest {
         UUID userId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
+
+        // Initialize mockOwner with email
+        mockOwner = new User(); // Add this
+        mockOwner.setUserId(ownerId);
+        mockOwner.setEmail("owner@example.com"); // Critical fix
 
         mockHotel = new Hotel();
         mockHotel.setHotelId(hotelId);
@@ -93,7 +94,7 @@ class BookingServiceImplTest {
     void testCreateBooking_Success() {
         try (MockedStatic<AuthUtil> mockedAuthUtil = mockStatic(AuthUtil.class)) {
             mockedAuthUtil.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
-    
+
             CreateBookingRequest request = new CreateBookingRequest();
             request.setRoomId(mockRoom.getRoomId());
             LocalDate today = LocalDate.now();
@@ -101,96 +102,96 @@ class BookingServiceImplTest {
             request.setCheckOut(today.plusDays(4));
             request.setGuests(2);
             request.setRoomsBooked(1);
-    
+
             when(roomRepository.findById(mockRoom.getRoomId())).thenReturn(Optional.of(mockRoom));
             when(roomAvailabilityService.isRoomAvailableForRange(any(), any(), any())).thenReturn(true);
-    
+
             // Capture saved booking and set ID
             when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
                 Booking b = invocation.getArgument(0);
                 b.setBookingId(mockBooking.getBookingId());
                 return b;
             });
-    
+
             // Stub with explicit ID
             when(bookingRepository.findById(mockBooking.getBookingId()))
-                .thenReturn(Optional.of(mockBooking));
-    
+                    .thenReturn(Optional.of(mockBooking));
+
             BookingResponse response = bookingService.createBooking(request);
-    
+
             assertNotNull(response);
             assertEquals(mockBooking.getBookingId(), response.getBookingId());
             verify(bookingRepository).findById(mockBooking.getBookingId());
         }
     }
 
-        @Test
+    @Test
     void testCreateBooking_RoomNotFound() {
         CreateBookingRequest request = new CreateBookingRequest();
         request.setRoomId(UUID.randomUUID());
-    
+
         when(roomRepository.findById(request.getRoomId())).thenReturn(Optional.empty());
-    
+
         assertThrows(ResourceNotFoundException.class, () -> bookingService.createBooking(request));
     }
 
-        @Test
+    @Test
     void testCreateBooking_RoomNotAvailable() {
         CreateBookingRequest request = new CreateBookingRequest();
         request.setRoomId(mockRoom.getRoomId());
         request.setCheckIn(LocalDate.now().plusDays(1));
         request.setCheckOut(LocalDate.now().plusDays(3));
-    
+
         when(roomRepository.findById(mockRoom.getRoomId())).thenReturn(Optional.of(mockRoom));
         when(roomAvailabilityService.isRoomAvailableForRange(any(), any(), any())).thenReturn(false);
-    
+
         assertThrows(BadRequestException.class, () -> bookingService.createBooking(request));
     }
-    
-        @Test
+
+    @Test
     void testGetBookingById_Success() {
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.of(mockBooking));
-    
+
         BookingResponse response = bookingService.getBookingById(mockBooking.getBookingId());
-    
+
         assertNotNull(response);
         assertEquals(mockBooking.getBookingId(), response.getBookingId());
     }
 
-        @Test
+    @Test
     void testGetBookingById_NotFound() {
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.empty());
-    
+
         assertThrows(ResourceNotFoundException.class, () -> bookingService.getBookingById(mockBooking.getBookingId()));
     }
 
-        @Test
+    @Test
     void testUpdateBooking_Success() {
         UpdateBookingRequest request = new UpdateBookingRequest();
         request.setCheckIn(LocalDate.now().plusDays(2));
         request.setCheckOut(LocalDate.now().plusDays(4));
         request.setGuests(3);
         request.setRoomsBooked(2);
-    
+
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.of(mockBooking));
         when(roomAvailabilityService.isRoomAvailableForRange(any(), any(), any())).thenReturn(true);
         when(bookingRepository.save(any(Booking.class))).thenReturn(mockBooking);
-    
+
         BookingResponse response = bookingService.updateBooking(mockBooking.getBookingId(), request);
-    
+
         assertNotNull(response);
         assertEquals(mockBooking.getBookingId(), response.getBookingId());
         verify(bookingRepository, times(1)).save(any(Booking.class));
     }
 
-        @Test
+    @Test
     void testUpdateBooking_NotFound() {
         UpdateBookingRequest request = new UpdateBookingRequest();
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.empty());
-    
-        assertThrows(ResourceNotFoundException.class, () -> bookingService.updateBooking(mockBooking.getBookingId(), request));
-    }
 
+        assertThrows(ResourceNotFoundException.class,
+                () -> bookingService.updateBooking(mockBooking.getBookingId(), request));
+    }
 
     @Test
     void testCancelBooking_Success() {
@@ -207,10 +208,10 @@ class BookingServiceImplTest {
         }
     }
 
-        @Test
+    @Test
     void testCancelBooking_NotFound() {
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.empty());
-    
+
         assertThrows(ResourceNotFoundException.class, () -> bookingService.cancelBooking(mockBooking.getBookingId()));
     }
 
@@ -228,15 +229,19 @@ class BookingServiceImplTest {
         }
     }
 
-        @Test
+    @Test
     void testApproveBooking_Success() {
         mockBooking.setStatus(BookingStatus.PENDING);
-    
+
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.of(mockBooking));
         when(bookingRepository.save(any(Booking.class))).thenReturn(mockBooking);
-    
+        doNothing().when(emailService).sendBookingApprovalToHotelOwner(
+                nullable(String.class), nullable(String.class), nullable(String.class));
+        doNothing().when(emailService).sendBookingConfirmation(
+                nullable(String.class), nullable(String.class), nullable(String.class));
+
         BookingResponse response = bookingService.approveBooking(mockBooking.getBookingId());
-    
+
         assertNotNull(response);
         assertEquals(BookingStatus.CONFIRMED, response.getStatus());
         verify(bookingRepository, times(1)).save(any(Booking.class));
@@ -257,50 +262,53 @@ class BookingServiceImplTest {
         }
     }
 
-        @Test
+    @Test
     void testGetBookingsForHotel_Success() {
         UUID hotelId = UUID.randomUUID();
         when(bookingRepository.findByRoom_Hotel_HotelId(hotelId)).thenReturn(List.of(mockBooking));
-    
+
         List<BookingResponse> responses = bookingService.getBookingsForHotel(hotelId);
-    
+
         assertNotNull(responses);
         assertEquals(1, responses.size());
         verify(bookingRepository, times(1)).findByRoom_Hotel_HotelId(hotelId);
     }
 
-        @Test
+    @Test
     void testGenerateInvoice_Success() {
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.of(mockBooking));
-    
+
         BookingResponse response = bookingService.generateInvoice(mockBooking.getBookingId());
-    
+
         assertNotNull(response);
         assertEquals(mockBooking.getBookingId(), response.getBookingId());
     }
 
-        @Test
+    @Test
     void testGenerateInvoice_NotFound() {
         when(bookingRepository.findById(mockBooking.getBookingId())).thenReturn(Optional.empty());
-    
+
         assertThrows(ResourceNotFoundException.class, () -> bookingService.generateInvoice(mockBooking.getBookingId()));
     }
 
-        @Test
+    @Test
     void testIsRoomAvailable_Success() {
         when(bookingRepository.findByRoom_RoomId(mockRoom.getRoomId())).thenReturn(Collections.emptyList());
         when(roomAvailabilityService.isRoomAvailableForRange(any(), any(), any())).thenReturn(true);
-    
-        boolean isAvailable = bookingService.isRoomAvailable(mockRoom.getRoomId(), LocalDate.now().plusDays(1), LocalDate.now().plusDays(3));
-    
+
+        boolean isAvailable = bookingService.isRoomAvailable(mockRoom.getRoomId(), LocalDate.now().plusDays(1),
+                LocalDate.now().plusDays(3));
+
         assertTrue(isAvailable);
     }
-        @Test
+
+    @Test
     void testIsRoomAvailable_NotAvailable() {
         when(bookingRepository.findByRoom_RoomId(mockRoom.getRoomId())).thenReturn(List.of(mockBooking));
-    
-        boolean isAvailable = bookingService.isRoomAvailable(mockRoom.getRoomId(), LocalDate.now().plusDays(1), LocalDate.now().plusDays(3));
-    
+
+        boolean isAvailable = bookingService.isRoomAvailable(mockRoom.getRoomId(), LocalDate.now().plusDays(1),
+                LocalDate.now().plusDays(3));
+
         assertFalse(isAvailable);
     }
 

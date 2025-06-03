@@ -1,16 +1,16 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.PriceCalculationResponse;
-import com.wissen.hotel.dtos.PriceSimulationRequest;
-import com.wissen.hotel.dtos.PriceSimulationResult;
+import com.wissen.hotel.dto.response.PriceCalculationResponse;
+import com.wissen.hotel.dto.request.PriceSimulationRequest;
+import com.wissen.hotel.dto.response.PriceSimulationResult;
 import com.wissen.hotel.enums.PricingRuleType;
-import com.wissen.hotel.models.Hotel;
-import com.wissen.hotel.models.PricingRule;
-import com.wissen.hotel.models.Room;
-import com.wissen.hotel.repositories.PricingRuleRepository;
-import com.wissen.hotel.repositories.RoomRepository;
-import com.wissen.hotel.services.PricingEngineServiceImpl;
-import com.wissen.hotel.services.RoomAvailabilityService;
+import com.wissen.hotel.model.Hotel;
+import com.wissen.hotel.model.PricingRule;
+import com.wissen.hotel.model.Room;
+import com.wissen.hotel.repository.PricingRuleRepository;
+import com.wissen.hotel.repository.RoomRepository;
+import com.wissen.hotel.service.impl.PricingEngineServiceImpl;
+import com.wissen.hotel.service.RoomAvailabilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

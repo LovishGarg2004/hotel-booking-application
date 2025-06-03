@@ -1,13 +1,14 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.*;
+import com.wissen.hotel.dto.request.*;
+import com.wissen.hotel.dto.response.*;
 import com.wissen.hotel.enums.RoomType;
-import com.wissen.hotel.exceptions.*;
-import com.wissen.hotel.models.*;
-import com.wissen.hotel.repositories.*;
-import com.wissen.hotel.services.BookingService;
-import com.wissen.hotel.services.RoomServiceImpl;
-import com.wissen.hotel.services.RoomAmenityService;
+import com.wissen.hotel.exception.*;
+import com.wissen.hotel.model.*;
+import com.wissen.hotel.repository.*;
+import com.wissen.hotel.service.BookingService;
+import com.wissen.hotel.service.impl.RoomServiceImpl;
+import com.wissen.hotel.service.RoomAmenityService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

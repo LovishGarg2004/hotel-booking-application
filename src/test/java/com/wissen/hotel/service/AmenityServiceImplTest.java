@@ -1,10 +1,10 @@
 package com.wissen.hotel.service;
 
-import com.wissen.hotel.dtos.AmenityResponse;
-import com.wissen.hotel.dtos.CreateOrUpdateAmenityRequest;
-import com.wissen.hotel.models.Amenity;
-import com.wissen.hotel.repositories.AmenityRepository;
-import com.wissen.hotel.services.AmenityServiceImpl;
+import com.wissen.hotel.dto.response.AmenityResponse;
+import com.wissen.hotel.dto.request.CreateOrUpdateAmenityRequest;
+import com.wissen.hotel.model.Amenity;
+import com.wissen.hotel.repository.AmenityRepository;
+import com.wissen.hotel.service.impl.AmenityServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
