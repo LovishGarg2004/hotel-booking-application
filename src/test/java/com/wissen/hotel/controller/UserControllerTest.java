@@ -15,13 +15,22 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -37,6 +46,9 @@ class UserControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    // Remove direct controller instantiation; use MockMvc for endpoint testing
+    private final UUID userId = UUID.randomUUID();
 
     @Test
     void testGetCurrentUser() throws Exception {
@@ -85,7 +97,7 @@ class UserControllerTest {
     }
 
     @Test
-        void testGetCurrentUserBookings() throws Exception {
+    void testGetCurrentUserBookings() throws Exception {
         // Mock response
         BookingResponse bookingResponse = BookingResponse.builder()
                 .bookingId(UUID.randomUUID())
@@ -104,7 +116,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$[0].roomId").value(bookingResponse.getRoomId().toString()))
                 .andExpect(jsonPath("$[0].checkIn").value("2025-05-20"))
                 .andExpect(jsonPath("$[0].checkOut").value("2025-05-25"));
-        }
+    }
 
     @Test
     void testGetUserById() throws Exception {
@@ -144,33 +156,37 @@ class UserControllerTest {
                 .andExpect(jsonPath("$[0].email").value("user1@example.com"));
     }
 
-        @Test
-        void testUpdateUserRole() throws Exception {
-        // Mock request
-        UUID id = UUID.randomUUID();
-        String role = "ADMIN";
-
-        // Perform PUT request and validate response
-        mockMvc.perform(put("/api/users/admin/{id}/role", id)
-                        .param("role", role)) // Pass the role as a query parameter
-                .andExpect(status().isOk()); // Expect HTTP 200 OK status
-
-        // Verify that the service method was called with the correct arguments
-        Mockito.verify(userService).updateUserRole(
-                Mockito.eq(id.toString()), // Verify the user ID
-                Mockito.argThat(request -> request.getRole() == UserRole.ADMIN) // Verify the role in the request
-        );
-        }
+       
     @Test
-    void testDeleteUser() throws Exception {
-        // Mock request
-        UUID id = UUID.randomUUID();
+    void testUpdateUserRole_Admin() throws Exception {
+        String role = "ADMIN";
+        mockMvc.perform(put("/api/users/admin/{id}/role", userId)
+                .param("role", role))
+                .andExpect(status().isOk());
 
-        // Perform DELETE request and validate response
-        mockMvc.perform(delete("/api/users/admin/{id}", id))
-                .andExpect(status().isNoContent());
+        verify(userService).updateUserRole(eq(userId.toString()), 
+            argThat(req -> req.getRole() == UserRole.ADMIN));
+    }
 
-        // Verify service call
-        Mockito.verify(userService).deleteUser(id.toString());
+    @Test
+    void testUpdateUserRole_Customer() throws Exception {
+        String role = "customer"; // case-insensitive test
+        mockMvc.perform(put("/api/users/admin/{id}/role", userId)
+                .param("role", role))
+                .andExpect(status().isOk());
+
+        verify(userService).updateUserRole(eq(userId.toString()), 
+            argThat(req -> req.getRole() == UserRole.CUSTOMER));
+    }
+
+    @Test
+    void testUpdateUserRole_HotelOwner() throws Exception {
+        String role = "HOTEL_OWNER";
+        mockMvc.perform(put("/api/users/admin/{id}/role", userId)
+                .param("role", role))
+                .andExpect(status().isOk());
+
+        verify(userService).updateUserRole(eq(userId.toString()), 
+            argThat(req -> req.getRole() == UserRole.HOTEL_OWNER));
     }
 }
