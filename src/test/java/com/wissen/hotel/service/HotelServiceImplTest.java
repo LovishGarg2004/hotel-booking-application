@@ -154,13 +154,14 @@ public class HotelServiceImplTest {
         when(roomRepository.findAllByHotel_HotelId(mockHotel.getHotelId())).thenReturn(List.of(mockRoom));
         // Simulate RoomAvailabilityRepository always returns enough rooms for all dates
         when(roomAvailabilityRepository.findByRoom_RoomIdAndDate(any(UUID.class), any(LocalDate.class)))
-            .thenReturn(RoomAvailability.builder().availableRooms(5).build());
+                .thenReturn(RoomAvailability.builder().availableRooms(5).build());
         // Simulate pricing engine
         PriceCalculationResponse priceResponse = new PriceCalculationResponse();
         priceResponse.setFinalPrice(new BigDecimal("100.00"));
         when(pricingEngineService.calculatePrice(mockRoom.getRoomId(), checkIn, checkOut)).thenReturn(priceResponse);
 
-        List<HotelResponse> responses = hotelService.searchHotels("Test City", checkIn, checkOut, numberOfGuests, 0, 10);
+        List<HotelResponse> responses = hotelService.searchHotels("Test City", checkIn, checkOut, numberOfGuests, 0,
+                10);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
@@ -172,29 +173,87 @@ public class HotelServiceImplTest {
         verify(roomRepository, times(1)).findAllByHotel_HotelId(mockHotel.getHotelId());
         verify(pricingEngineService, atLeastOnce()).calculatePrice(mockRoom.getRoomId(), checkIn, checkOut);
     }
+
     @Test
     void testGetAllHotels_Success() {
+        // Mock rooms for the hotel
+        Room mockRoom = Room.builder()
+                .basePrice(new BigDecimal("100.00"))
+                .hotel(mockHotel)
+                .build();
+        when(roomRepository.findAllByHotel_HotelId(mockHotel.getHotelId()))
+                .thenReturn(List.of(mockRoom)); // <-- Return non-empty list
+
+        // Mock hotel repository to return the approved hotel
         List<Hotel> hotels = List.of(mockHotel);
         when(hotelRepository.findAll()).thenReturn(hotels);
 
+        // Test with matching city
         List<HotelResponse> responses = hotelService.getAllHotels("Test City", 0, 10);
 
+        // Assertions
         assertNotNull(responses);
-        assertEquals(1, responses.size());
+        assertEquals(1, responses.size()); // Now passes
+        assertEquals("Test City", responses.get(0).getCity());
         assertEquals(mockHotel.getName(), responses.get(0).getName());
         verify(hotelRepository, times(1)).findAll();
+
+        // Test with non-matching city
+        List<HotelResponse> emptyResponses = hotelService.getAllHotels("Nonexistent City", 0, 10);
+        assertTrue(emptyResponses.isEmpty());
     }
 
     @Test
     void testGetTopRatedHotels_Success() {
-        List<Hotel> hotels = List.of(mockHotel);
+        Hotel hotel1 = Hotel.builder()
+                .hotelId(UUID.randomUUID())
+                .name("Hotel 1")
+                .owner(mockOwner)
+                .build();
+        Hotel hotel2 = Hotel.builder()
+                .hotelId(UUID.randomUUID())
+                .name("Hotel 2")
+                .owner(mockOwner)
+                .build();
+        Hotel hotel3 = Hotel.builder()
+                .hotelId(UUID.randomUUID())
+                .name("Hotel 3")
+                .owner(mockOwner)
+                .build();
+
+        List<Hotel> hotels = Arrays.asList(hotel1, hotel2, hotel3);
         when(hotelRepository.findAll()).thenReturn(hotels);
+
+        // Mock rooms - hotel3 has none
+        Room room1 = Room.builder().basePrice(new BigDecimal("100.00")).hotel(hotel1).build();
+        Room room2 = Room.builder().basePrice(new BigDecimal("80.00")).hotel(hotel2).build();
+        when(roomRepository.findAllByHotel_HotelId(hotel1.getHotelId())).thenReturn(List.of(room1));
+        when(roomRepository.findAllByHotel_HotelId(hotel2.getHotelId())).thenReturn(List.of(room2));
+        when(roomRepository.findAllByHotel_HotelId(hotel3.getHotelId())).thenReturn(Collections.emptyList());
+
+        // Mock reviews for getAverageRating
+        when(reviewService.getReviewsByHotel(hotel1.getHotelId()))
+                .thenReturn(List.of(
+                        ReviewResponse.builder().rating(5).build(),
+                        ReviewResponse.builder().rating(5).build()));
+        when(reviewService.getReviewsByHotel(hotel2.getHotelId()))
+                .thenReturn(List.of(
+                        ReviewResponse.builder().rating(4).build(),
+                        ReviewResponse.builder().rating(4).build()));
 
         List<HotelResponse> responses = hotelService.getTopRatedHotels();
 
         assertNotNull(responses);
-        assertEquals(1, responses.size());
-        verify(hotelRepository, times(1)).findAll();
+        assertEquals(2, responses.size());
+        assertEquals(hotel1.getHotelId(), responses.get(0).getHotelId());
+        assertEquals(hotel2.getHotelId(), responses.get(1).getHotelId());
+
+        verify(hotelRepository).findAll();
+        verify(roomRepository).findAllByHotel_HotelId(hotel1.getHotelId());
+        verify(roomRepository).findAllByHotel_HotelId(hotel2.getHotelId());
+        verify(roomRepository).findAllByHotel_HotelId(hotel3.getHotelId());
+        verify(reviewService, atLeastOnce()).getReviewsByHotel(hotel1.getHotelId());
+        verify(reviewService, atLeastOnce()).getReviewsByHotel(hotel2.getHotelId());
     }
 
     @Test
@@ -239,15 +298,18 @@ public class HotelServiceImplTest {
                 .build();
         when(hotelRepository.findById(hotelId)).thenReturn(Optional.of(mockHotel));
         when(roomRepository.findAllByHotel_HotelId(hotelId)).thenReturn(List.of(mockRoom));
-        when(roomAvailabilityService.isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1))).thenReturn(true);
+        when(roomAvailabilityService.isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(),
+                LocalDate.now().plusDays(1))).thenReturn(true);
 
-        List<RoomResponse> responses = (List<RoomResponse>) hotelService.checkAvailability(hotelId, LocalDate.now().toString(), LocalDate.now().plusDays(1).toString());
+        List<RoomResponse> responses = (List<RoomResponse>) hotelService.checkAvailability(hotelId,
+                LocalDate.now().toString(), LocalDate.now().plusDays(1).toString());
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         verify(hotelRepository, times(1)).findById(hotelId);
         verify(roomRepository, times(1)).findAllByHotel_HotelId(hotelId);
-        verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(), LocalDate.now().plusDays(1));
+        verify(roomAvailabilityService, times(1)).isRoomAvailableForRange(mockRoom.getRoomId(), LocalDate.now(),
+                LocalDate.now().plusDays(1));
     }
 
     @Test
