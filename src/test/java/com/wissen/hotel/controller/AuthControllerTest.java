@@ -79,12 +79,12 @@ class AuthControllerTest {
     }
 
     // @Test
-    // void testVerifyEmail() throws Exception {
-    //     String token = "sample-token-123";
+    // void testVerifyEmail_Success() throws Exception {
+    //     String token = "dummyToken";
 
-    //     when(authService.verifyEmail(token)).thenReturn(ResponseEntity.ok("Email verified successfully!"));
+    //     doNothing().when(authService).verifyEmail(token);
 
-    //     mockMvc.perform(get("/api/auth/verify/{token}", token))
+    //     mockMvc.perform(get("/verify/{token}", token))
     //             .andExpect(status().isOk())
     //             .andExpect(content().string("Email verified successfully!"));
 

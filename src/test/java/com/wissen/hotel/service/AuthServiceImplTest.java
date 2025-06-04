@@ -7,6 +7,8 @@ import com.wissen.hotel.repository.UserRepository;
 import com.wissen.hotel.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -20,6 +22,7 @@ import static org.mockito.Mockito.*;
 import com.wissen.hotel.service.impl.AuthServiceImpl;
 import com.wissen.hotel.service.impl.EmailServiceImpl;
 
+@ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
     private AuthServiceImpl authService;
