@@ -43,14 +43,29 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public List<HotelResponse> getAllHotels(String city, int page, int size) {
-        List<HotelResponse> hotels = hotelRepository.findAll().stream()
+        return hotelRepository.findAll().stream()
                 .filter(hotel -> hotel.isApproved()) // Only approved hotels
                 .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
+                .map(hotel -> {
+                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                    if (rooms == null || rooms.isEmpty()) {
+                        return null; // Skip hotels with no rooms
+                    }
+                    HotelResponse response = mapToResponse(hotel);
+                    // Find the cheapest room price
+                    BigDecimal minPrice = rooms.stream()
+                        .map(Room::getBasePrice)
+                        .filter(Objects::nonNull)
+                        .min(BigDecimal::compareTo)
+                        .orElse(null);
+                    response.setFinalPrice(minPrice);
+                    response.setRoomsRequired(1); // Default to 1 room if no specific logic
+                    return response;
+                })
+                .filter(Objects::nonNull)
                 .skip((long) page * size)
                 .limit(size)
-                .map(this::mapToResponse)
                 .toList();
-        return hotels;
     }
 
     @Override
@@ -165,6 +180,9 @@ public class HotelServiceImpl implements HotelService {
             .filter(hotel -> (city == null || hotel.getCity().equalsIgnoreCase(city)))
             .map(hotel -> {
                 List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                if (rooms == null || rooms.isEmpty()) {
+                    return null; // Exclude hotels with no rooms
+                }
                 rooms = rooms.stream().sorted((a, b) -> Integer.compare(b.getCapacity(), a.getCapacity())).toList();
 
                 BigDecimal minTotalPrice = null;
@@ -214,8 +232,27 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public List<HotelResponse> getTopRatedHotels() {
         return hotelRepository.findAll().stream()
+                .sorted((h1, h2) -> Double.compare(
+                        getAverageRating(h2.getHotelId()),
+                        getAverageRating(h1.getHotelId())
+                ))
+                .map(hotel -> {
+                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                    if (rooms == null || rooms.isEmpty()) {
+                        return null; // Exclude hotels with no rooms
+                    }
+                    HotelResponse response = mapToResponse(hotel);
+                    BigDecimal minPrice = rooms.stream()
+                            .map(Room::getBasePrice)
+                            .filter(Objects::nonNull)
+                            .min(BigDecimal::compareTo)
+                            .orElse(null);
+                    response.setFinalPrice(minPrice);
+                    response.setRoomsRequired(1);
+                    return response;
+                })
+                .filter(Objects::nonNull)
                 .limit(10)
-                .map(this::mapToResponse)
                 .toList();
     }
 
