@@ -120,7 +120,7 @@ sonar {
     property "sonar.organization", "lovishgarg2004"
     property "sonar.host.url", "https://sonarcloud.io"
 
-    property "sonar.coverage.exclusions", "**/model/**,**/dto/**,**/exception/**,**/config/**,**/repository/**,**/util/**,**/enums/**,**/Application/**,**/EmailServiceImpl/**"
+    property "sonar.coverage.exclusions", "**/model/**,**/dto/**,**/exception/**,**/config/**,**/repository/**,**/util/**,**/enums/**,**/EmailServiceImpl/**"
 }
 
 tasks.withType(JavaCompile) {
