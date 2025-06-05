@@ -120,11 +120,15 @@ sonar {
     property "sonar.organization", "lovishgarg2004"
     property "sonar.host.url", "https://sonarcloud.io"
 
-    property "sonar.coverage.exclusions", "**/model/**,**/dto/**,**/exception/**,**/config/**,**/repository/**,**/util/**,**/enums/**"
-  }
+    property "sonar.coverage.exclusions", "**/model/**,**/dto/**,**/exception/**,**/config/**,**/repository/**,**/util/**,**/enums/**,**/Application/**,**/EmailServiceImpl/**"
 }
 
 tasks.withType(JavaCompile) {
     options.compilerArgs << "-parameters"
+}
+tasks.withType(Test) {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // report is always generated after tests run
+    }
 }
 

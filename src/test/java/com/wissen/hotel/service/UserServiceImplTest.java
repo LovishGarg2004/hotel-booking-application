@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessException;
 import org.mockito.MockedStatic;
 
 import java.time.LocalDate;
@@ -80,6 +81,20 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateCurrentUser_ShouldThrowWhenSavingFails() {
+        try (var mockedAuth = mockStatic(AuthUtil.class)) {
+            mockedAuth.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
+            when(userRepository.save(any())).thenThrow(new DataAccessException("DB error") {});
+
+            UserServiceException ex = assertThrows(UserServiceException.class,
+                () -> userService.updateCurrentUser(new UpdateUserRequest()));
+
+            assertTrue(ex.getMessage().contains("Unable to update user profile"));
+            assertTrue(ex.getCause().getMessage().contains("DB error"));
+        }
+    }
+
+    @Test
     void testGetCurrentUserBookings_Success() {
         try (MockedStatic<AuthUtil> authUtilMock = mockStatic(AuthUtil.class)) {
             authUtilMock.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
@@ -115,6 +130,20 @@ class UserServiceImplTest {
     }
 
     @Test
+    void getCurrentUserBookings_ShouldThrowWhenBookingsFetchFails() {
+        try (var mockedAuth = mockStatic(AuthUtil.class)) {
+            mockedAuth.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
+            when(bookingRepository.findAllByUser_UserId(any()))
+                .thenThrow(new RuntimeException("DB error"));
+
+            UserServiceException ex = assertThrows(UserServiceException.class,
+                () -> userService.getCurrentUserBookings());
+
+            assertTrue(ex.getMessage().contains("Unable to fetch your bookings"));
+        }
+    }
+
+    @Test
     void testGetUserById_Success() {
         UUID userId = UUID.randomUUID();
         User user = new User();
@@ -146,6 +175,26 @@ class UserServiceImplTest {
     }
 
     @Test
+    void getUserById_ShouldThrowWhenUserNotFound() {
+        when(userRepository.findById(any()))
+            .thenReturn(Optional.empty());
+
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.getUserById(UUID.randomUUID().toString()));
+
+        assertTrue(ex.getMessage().contains("User not found"));
+        assertNull(ex.getCause());
+    }
+
+    @Test
+    void getUserById_ShouldThrowOnInvalidUUID() {
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.getUserById("invalid-id"));
+
+        assertTrue(ex.getMessage().contains("Unable to fetch user details"));
+    }
+
+    @Test
     void testGetAllUsers() {
         User user1 = new User();
         user1.setUserId(UUID.randomUUID());
@@ -161,6 +210,16 @@ class UserServiceImplTest {
 
         assertEquals(2, result.size());
         verify(userRepository).findAll();
+    }
+
+    @Test
+    void getAllUsers_ShouldThrowWhenRepositoryFails() {
+        when(userRepository.findAll()).thenThrow(new DataAccessException("DB error") {});
+
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.getAllUsers(0, 10));
+
+        assertTrue(ex.getMessage().contains("Unable to fetch users"));
     }
 
     @Test
@@ -198,6 +257,49 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateUserRole_ShouldThrowWhenUserNotFound() {
+        when(userRepository.findById(any()))
+            .thenReturn(Optional.empty());
+
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.updateUserRole(UUID.randomUUID().toString(), new UpdateUserRoleRequest()));
+
+        assertTrue(ex.getMessage().contains("User not found"));
+    }
+
+    @Test
+    void updateUserRole_ShouldThrowWhenSavingFails() {
+        when(userRepository.findById(any())).thenReturn(Optional.of(mockUser));
+        when(userRepository.save(any())).thenThrow(new DataAccessException("DB error") {});
+
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.updateUserRole(UUID.randomUUID().toString(), new UpdateUserRoleRequest()));
+
+        assertTrue(ex.getMessage().contains("Unable to update user role"));
+    }
+
+    // deleteUser exceptions
+    @Test
+    void deleteUser_ShouldThrowWhenDeletionFails() {
+        doThrow(new DataAccessException("DB error") {})
+            .when(userRepository).deleteById(any());
+
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.deleteUser(UUID.randomUUID().toString()));
+
+        assertTrue(ex.getMessage().contains("Unable to delete user"));
+    }
+
+    @Test
+    void deleteUser_ShouldThrowOnInvalidUUID() {
+        UserServiceException ex = assertThrows(UserServiceException.class,
+            () -> userService.deleteUser("invalid-id"));
+
+        assertTrue(ex.getMessage().contains("Unable to delete user"));
+        assertTrue(ex.getCause() instanceof IllegalArgumentException);
+    }
+
+    @Test
     void testDeleteUser_Success() {
         UUID userId = UUID.randomUUID();
 
@@ -205,4 +307,34 @@ class UserServiceImplTest {
 
         verify(userRepository).deleteById(userId);
     }
+
+    @Test
+    void getCurrentUser_ShouldReturnUserResponse_WhenUserIsPresent() {
+        User mockUser = new User();
+        mockUser.setUserId(UUID.randomUUID());
+        mockUser.setEmail("test@example.com");
+        mockUser.setEmailVerified(true);
+
+        try (MockedStatic<AuthUtil> mockedAuthUtil = mockStatic(AuthUtil.class)) {
+            mockedAuthUtil.when(AuthUtil::getCurrentUser).thenReturn(mockUser);
+
+            UserResponse response = userService.getCurrentUser();
+
+            assertNotNull(response);
+            assertEquals("test@example.com", response.getEmail());
+            assertTrue(response.isEmailVerified());
+        }
+    }
+
+    @Test
+    void getCurrentUser_ShouldThrowUserServiceException_WhenExceptionOccurs() {
+        try (MockedStatic<AuthUtil> mockedAuthUtil = mockStatic(AuthUtil.class)) {
+            mockedAuthUtil.when(AuthUtil::getCurrentUser).thenThrow(new RuntimeException("Session expired"));
+
+            UserServiceException ex = assertThrows(UserServiceException.class, () -> userService.getCurrentUser());
+            assertTrue(ex.getMessage().contains("Unable to fetch current user"));
+            assertTrue(ex.getCause() instanceof RuntimeException);
+        }
+    }
 }
+
