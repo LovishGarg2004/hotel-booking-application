@@ -25,7 +25,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 @ExtendWith(MockitoExtension.class)
-public class HotelServiceImplTest {
+class HotelServiceImplTest {
 
     @Mock
     private HotelRepository hotelRepository;
@@ -111,6 +111,47 @@ public class HotelServiceImplTest {
         assertEquals(mockHotel.getName(), response.getName());
         verify(hotelRepository, times(1)).save(any(Hotel.class));
     }
+
+    @Test
+    void testUpdateHotel_Success() {
+        UpdateHotelRequest updateRequest = new UpdateHotelRequest();
+        updateRequest.setName("Updated Hotel");
+        updateRequest.setAddress("123 Updated St");
+        updateRequest.setDescription("Updated description");
+        updateRequest.setCity("Updated City");
+        updateRequest.setState("Updated State");
+        updateRequest.setCountry("Updated Country");
+        updateRequest.setLatitude(new BigDecimal(11.11));
+        updateRequest.setLongitude(new BigDecimal(22.22));
+
+        when(hotelRepository.findById(hotelId)).thenReturn(Optional.of(mockHotel));
+        when(hotelRepository.save(any(Hotel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        HotelResponse response = hotelService.updateHotel(hotelId, updateRequest);
+
+        assertNotNull(response);
+        assertEquals("Updated Hotel", response.getName());
+        assertEquals("123 Updated St", response.getAddress());
+        assertEquals("Updated description", response.getDescription());
+        assertEquals("Updated City", response.getCity());
+        assertEquals("Updated State", response.getState());
+        assertEquals("Updated Country", response.getCountry());
+        verify(hotelRepository, times(1)).findById(hotelId);
+        verify(hotelRepository, times(1)).save(mockHotel);
+    }
+
+    @Test
+    void testUpdateHotel_NotFound() {
+        UpdateHotelRequest updateRequest = new UpdateHotelRequest();
+        when(hotelRepository.findById(hotelId)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                hotelService.updateHotel(hotelId, updateRequest));
+        assertEquals("Hotel not found", ex.getMessage());
+        verify(hotelRepository, times(1)).findById(hotelId);
+        verify(hotelRepository, never()).save(any());
+    }
+
 
     @Test
     void testDeleteHotel_Success() {

@@ -126,9 +126,5 @@ sonar {
 tasks.withType(JavaCompile) {
     options.compilerArgs << "-parameters"
 }
-tasks.withType(Test) {
-    useJUnitPlatform()
-    finalizedBy jacocoTestReport // report is always generated after tests run
-    }
 }
 
