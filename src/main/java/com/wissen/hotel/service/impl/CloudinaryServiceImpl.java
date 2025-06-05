@@ -107,7 +107,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             .build();
     }
 
-    private String extractPublicId(String imageUrl) {
+    public String extractPublicId(String imageUrl) {
         try {
             String[] parts = imageUrl.split("/upload/");
             if (parts.length > 1) {
