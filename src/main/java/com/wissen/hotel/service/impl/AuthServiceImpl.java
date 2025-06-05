@@ -8,7 +8,6 @@ import com.wissen.hotel.model.User;
 import com.wissen.hotel.repository.UserRepository;
 import com.wissen.hotel.util.JwtUtil;
 import com.wissen.hotel.service.*;
-import com.wissen.hotel.service.impl.EmailServiceImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -97,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
             logger.info("User found for email: {}", email);
             // Check if the email is already verified
             if (user.isEmailVerified()) {
-                logger.warn("Email is already verified for user: {}", email);
+                //logger.warn("Email is already verified for user: {}", email);
                 throw new EmailAlreadyVerifiedException("Email is already verified.");
             }
             // Mark the email as verified
