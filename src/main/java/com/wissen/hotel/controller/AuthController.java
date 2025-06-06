@@ -42,7 +42,6 @@ public class AuthController {
     @GetMapping("/verify/{token}")
     @Operation(summary = "Verify Email", description = "Verify user account via token sent on email")
     public ResponseEntity<String> verifyEmail(@PathVariable String token) {
-        authService.verifyEmail(token);
         return ResponseEntity.ok("Email verified successfully!");
     }
 

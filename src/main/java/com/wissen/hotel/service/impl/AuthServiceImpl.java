@@ -86,17 +86,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ResponseEntity<String> verifyEmail(String token) {
         try {
-            logger.info("Verifying email with token: {}", token);
             // Decode the token to extract the email
             String email = jwtUtil.extractEmail(token);
-            logger.debug("Extracted email from token: {}", email);
+
             // Find the user by email
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
-            logger.info("User found for email: {}", email);
+
             // Check if the email is already verified
             if (user.isEmailVerified()) {
-                //logger.warn("Email is already verified for user: {}", email);
                 throw new EmailAlreadyVerifiedException("Email is already verified.");
             }
             // Mark the email as verified

@@ -56,7 +56,7 @@ public class JwtUtil {
 
     public String generateEmailVerificationToken(String email) {
         // Create token valid for, e.g., 24 hours
-        long expirationMillis = 24 * 60 * 60 * 1000; // 24 hours
+        long expirationMillis = 24L * 60 * 60 * 1000; // 24 hours
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationMillis);
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
