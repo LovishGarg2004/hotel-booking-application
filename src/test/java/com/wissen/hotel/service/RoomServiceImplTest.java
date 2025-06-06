@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
@@ -221,4 +222,85 @@ class RoomServiceImplTest {
         RoomResponse response = roomService.getRoomById(roomId);
         assertTrue(response.getAmenities().isEmpty());
     }
+
+    @Test
+void createRoom_ShouldThrowWhenSaveReturnsNull() {
+    when(hotelRepository.findById(hotelId)).thenReturn(Optional.of(approvedHotel));
+    when(roomRepository.save(any(Room.class))).thenReturn(null);
+
+    CreateRoomRequest request = new CreateRoomRequest(RoomType.SINGLE, 2, BigDecimal.valueOf(100.0), 5);
+
+    assertThrows(IllegalStateException.class, () -> roomService.createRoom(hotelId, request));
+}
+
+@Test
+void mapToResponse_ShouldThrowWhenRoomIsNull() throws Exception {
+    var method = RoomServiceImpl.class.getDeclaredMethod("mapToResponse", Room.class);
+    method.setAccessible(true);
+    assertThrows(InvocationTargetException.class, () -> method.invoke(roomService, (Room) null));
+}
+
+@Test
+void updateRoomAmenities_ShouldThrowWhenHotelNotApproved() {
+    Hotel unapprovedHotel = Hotel.builder().isApproved(false).build();
+    existingRoom.setHotel(unapprovedHotel);
+
+    when(roomRepository.findById(roomId)).thenReturn(Optional.of(existingRoom));
+
+    assertThrows(IllegalStateException.class, () -> roomService.updateRoomAmenities(roomId, List.of("WiFi")));
+}
+
+@Test
+void updateRoomAmenities_ShouldHandleEmptyAmenitiesList() {
+    when(roomRepository.findById(roomId)).thenReturn(Optional.of(existingRoom));
+    when(roomRepository.save(any(Room.class))).thenReturn(existingRoom);
+    when(roomAmenityRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+    when(roomAmenityService.getAmenitiesForRoom(roomId)).thenReturn(Collections.emptyList());
+
+    RoomResponse response = roomService.updateRoomAmenities(roomId, Collections.emptyList());
+    assertNotNull(response);
+    assertTrue(response.getAmenities().isEmpty());
+}
+
+@Test
+void deleteRoom_ShouldDeleteWhenHotelApproved() {
+    when(roomRepository.findById(roomId)).thenReturn(Optional.of(existingRoom));
+    doNothing().when(roomRepository).delete(existingRoom);
+
+    assertDoesNotThrow(() -> roomService.deleteRoom(roomId));
+    verify(roomRepository).delete(existingRoom);
+}
+
+@Test
+void deleteRoom_ShouldThrowWhenRoomNotFound() {
+    when(roomRepository.findById(roomId)).thenReturn(Optional.empty());
+    assertThrows(ResourceNotFoundException.class, () -> roomService.deleteRoom(roomId));
+}
+
+@Test
+void updateRoom_ShouldThrowWhenHotelNotApproved() {
+    Hotel unapprovedHotel = Hotel.builder().isApproved(false).build();
+    existingRoom.setHotel(unapprovedHotel);
+    when(roomRepository.findById(roomId)).thenReturn(Optional.of(existingRoom));
+
+    UpdateRoomRequest request = new UpdateRoomRequest(RoomType.SUITE, 3, BigDecimal.valueOf(300.0), 10);
+
+    assertThrows(IllegalStateException.class, () -> roomService.updateRoom(roomId, request));
+}
+
+@Test
+void getRoomById_ShouldThrowWhenRoomNotFound() {
+    when(roomRepository.findById(roomId)).thenReturn(Optional.empty());
+    assertThrows(ResourceNotFoundException.class, () -> roomService.getRoomById(roomId));
+}
+
+@Test
+void createRoom_ShouldWrapAndThrowGenericException() {
+    when(hotelRepository.findById(hotelId)).thenThrow(new RuntimeException("DB error"));
+    CreateRoomRequest request = new CreateRoomRequest(RoomType.SINGLE, 2, BigDecimal.valueOf(100.0), 5);
+
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> roomService.createRoom(hotelId, request));
+    assertTrue(ex.getMessage().contains("Failed to create room"));
+}
+
 }
