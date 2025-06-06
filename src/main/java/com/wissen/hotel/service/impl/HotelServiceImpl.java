@@ -44,28 +44,26 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public List<HotelResponse> getAllHotels(String city, int page, int size) {
         return hotelRepository.findAll().stream()
-                .filter(hotel -> hotel.isApproved()) // Only approved hotels
-                .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
-                .map(hotel -> {
-                    List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
-                    if (rooms == null || rooms.isEmpty()) {
-                        return null; // Skip hotels with no rooms
-                    }
-                    HotelResponse response = mapToResponse(hotel);
-                    // Find the cheapest room price
-                    BigDecimal minPrice = rooms.stream()
-                        .map(Room::getBasePrice)
-                        .filter(Objects::nonNull)
-                        .min(BigDecimal::compareTo)
-                        .orElse(null);
-                    response.setFinalPrice(minPrice);
-                    response.setRoomsRequired(1); // Default to 1 room if no specific logic
-                    return response;
-                })
-                .filter(Objects::nonNull)
-                .skip((long) page * size)
-                .limit(size)
-                .toList();
+            .filter(hotel -> hotel.isApproved()) // Only approved hotels
+            .filter(hotel -> city == null || hotel.getCity().equalsIgnoreCase(city))
+            .map(hotel -> {
+                List<Room> rooms = roomRepository.findAllByHotel_HotelId(hotel.getHotelId());
+                HotelResponse response = mapToResponse(hotel);
+                BigDecimal minPrice = null;
+                if (rooms != null && !rooms.isEmpty()) {
+                minPrice = rooms.stream()
+                    .map(Room::getBasePrice)
+                    .filter(Objects::nonNull)
+                    .min(BigDecimal::compareTo)
+                    .orElse(null);
+                }
+                response.setFinalPrice(minPrice);
+                response.setRoomsRequired(1); // Default to 1 room if no specific logic
+                return response;
+            })
+            .skip((long) page * size)
+            .limit(size)
+            .toList();
     }
 
     @Override
