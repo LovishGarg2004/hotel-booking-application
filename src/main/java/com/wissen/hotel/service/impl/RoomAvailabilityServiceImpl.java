@@ -2,8 +2,10 @@ package com.wissen.hotel.service.impl;
 
 import com.wissen.hotel.dto.request.UpdateInventoryRequest;
 import com.wissen.hotel.dto.request.BlockRoomRequest;
+import com.wissen.hotel.model.Booking;
 import com.wissen.hotel.model.Room;
 import com.wissen.hotel.model.RoomAvailability;
+import com.wissen.hotel.repository.BookingRepository;
 import com.wissen.hotel.repository.RoomAvailabilityRepository;
 import com.wissen.hotel.repository.RoomRepository;
 import com.wissen.hotel.service.RoomAvailabilityService;
@@ -11,9 +13,11 @@ import com.wissen.hotel.exception.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,6 +26,7 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
 
     private final RoomAvailabilityRepository availabilityRepository;
     private final RoomRepository roomRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     public boolean isRoomAvailable(UUID roomId, LocalDate date) {
@@ -54,8 +59,8 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
     @Override
     public void updateInventory(UUID roomId, UpdateInventoryRequest request) {
         try {
-            Room room = roomRepository.findById(roomId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+            Room room = roomRepository.findById(roomId).orElseThrow( () -> 
+                new ResourceNotFoundException("Room not found with ID: " + roomId));
             RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, request.getDate());
 
             int roomsToBook = request.getRoomsToBook();
@@ -88,18 +93,19 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
     public void blockRoomDates(UUID roomId, BlockRoomRequest request) {
         try {
             Room room = roomRepository.findById(roomId).orElseThrow();
+
             for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
-                RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
-                if (availability == null) {
-                    availability = RoomAvailability.builder()
-                            .room(room)
-                            .date(date)
-                            .availableRooms(0)
-                            .build();
-                } else {
-                    availability.setAvailableRooms(0);
-                }
-                availabilityRepository.save(availability);
+            RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
+            if (availability == null) {
+                availability = RoomAvailability.builder()
+                .room(room)
+                .date(date)
+                .availableRooms(0)
+                .build();
+            } else {
+                availability.setAvailableRooms(0);
+            }
+            availabilityRepository.save(availability);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to block room dates. Please try again later.", e);
@@ -109,11 +115,38 @@ public class RoomAvailabilityServiceImpl implements RoomAvailabilityService {
     @Override
     public void unblockRoomDates(UUID roomId, BlockRoomRequest request) {
         try {
+            Room room = roomRepository.findById(roomId).orElseThrow();
+            int totalRooms = room.getTotalRooms();
+
             for (LocalDate date = request.getStartDate(); !date.isAfter(request.getEndDate()); date = date.plusDays(1)) {
+                // Fetch all bookings for this room
+                List<Booking> bookings = bookingRepository.findByRoom_RoomId(roomId);
+
+                // Calculate booked rooms for this date
+                int bookedRooms = 0;
+                for (Booking booking : bookings) {
+                    // Check if the date falls within the booking's check-in (inclusive) and check-out (exclusive)
+                    if ((date.isEqual(booking.getCheckIn()) || date.isAfter(booking.getCheckIn()))
+                            && date.isBefore(booking.getCheckOut())) {
+                        bookedRooms += booking.getRoomsBooked();
+                    }
+                }
+
+                int availableRooms = totalRooms - bookedRooms;
+                if (availableRooms < 0) availableRooms = 0;
+
                 RoomAvailability availability = availabilityRepository.findByRoom_RoomIdAndDate(roomId, date);
                 if (availability != null) {
-                    availability.setAvailableRooms(1); // or whatever default value
+                    availability.setAvailableRooms(availableRooms);
                     availabilityRepository.save(availability);
+                } else {
+                    // If no availability record exists, create one
+                    RoomAvailability newAvailability = RoomAvailability.builder()
+                        .room(room)
+                        .date(date)
+                        .availableRooms(availableRooms)
+                        .build();
+                    availabilityRepository.save(newAvailability);
                 }
             }
         } catch (Exception e) {

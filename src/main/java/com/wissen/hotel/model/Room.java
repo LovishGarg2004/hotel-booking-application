@@ -36,4 +36,9 @@ public class Room {
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
     @Builder.Default
     private List<RoomAmenity> roomAmenities = new ArrayList<>();
+
+    public Room orElseThrow(Object object) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'orElseThrow'");
+    }
 }
