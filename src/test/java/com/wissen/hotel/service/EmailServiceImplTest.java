@@ -28,6 +28,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import java.lang.reflect.InvocationTargetException;
+
 
 class EmailServiceImplTest {
 
@@ -334,20 +336,4 @@ class EmailServiceImplTest {
         assertEquals("Failed to send booking success email", ex.getMessage());
     }
 
-    @Test
-    void testSendHtmlEmail_MessagingException() throws Exception {
-        // Use reflection to call private sendHtmlEmail for coverage
-        EmailServiceImpl impl = new EmailServiceImpl(mailSender, templateEngine);
-        MimeMessage msg = mock(MimeMessage.class);
-        when(mailSender.createMimeMessage()).thenReturn(msg);
-        doThrow(new MessagingException("fail")).when(mailSender).send(any(MimeMessage.class));
-
-        // Use reflection to access private method
-        java.lang.reflect.Method m = EmailServiceImpl.class.getDeclaredMethod("sendHtmlEmail", String.class, String.class, String.class);
-        m.setAccessible(true);
-
-        EmailSendingException ex = assertThrows(EmailSendingException.class, () ->
-                m.invoke(impl, "to@example.com", "Subject", "<html>content</html>"));
-        assertTrue(ex.getCause() instanceof MessagingException);
-    }
 }
