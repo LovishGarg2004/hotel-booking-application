@@ -3,8 +3,10 @@ package com.wissen.hotel.service;
 import com.wissen.hotel.dto.request.BlockRoomRequest;
 import com.wissen.hotel.dto.request.UpdateInventoryRequest;
 import com.wissen.hotel.exception.ResourceNotFoundException;
+import com.wissen.hotel.model.Booking;
 import com.wissen.hotel.model.Room;
 import com.wissen.hotel.model.RoomAvailability;
+import com.wissen.hotel.repository.BookingRepository;
 import com.wissen.hotel.repository.RoomAvailabilityRepository;
 import com.wissen.hotel.repository.RoomRepository;
 import com.wissen.hotel.service.impl.RoomAvailabilityServiceImpl;
@@ -21,6 +23,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -35,6 +38,9 @@ class RoomAvailabilityServiceImplTest {
     
     @InjectMocks
     private RoomAvailabilityServiceImpl service;
+
+    @Mock
+    private BookingRepository bookingRepository;
     
     private UUID roomId;
     private UUID hotelId;
@@ -156,27 +162,39 @@ class RoomAvailabilityServiceImplTest {
             .save(argThat(a -> a.getAvailableRooms() == 0));
     }
 
-    // @Test
-    // void unblockRoomDates_ShouldRestoreAvailability() {
-    //     BlockRoomRequest request = new BlockRoomRequest(today, today.plusDays(1));
-    //     RoomAvailability blocked1 = new RoomAvailability();
-    //     blocked1.setAvailableRooms(0);
-    //     RoomAvailability blocked2 = new RoomAvailability();
-    //     blocked2.setAvailableRooms(0);
+    @Test
+    void unblockRoomDates_ShouldRestoreAvailabilityBasedOnBookings() {
+        LocalDate endDate = today.plusDays(2);
+        BlockRoomRequest request = new BlockRoomRequest(today, endDate);
 
-    //     when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
-    //     when(availabilityRepository.findByRoom_RoomIdAndDate(eq(roomId), eq(today)))
-    //         .thenReturn(blocked1);
-    //     when(availabilityRepository.findByRoom_RoomIdAndDate(eq(roomId), eq(today.plusDays(1))))
-    //         .thenReturn(blocked2);
+        Room testRoom = new Room();
+        testRoom.setRoomId(roomId);
+        testRoom.setTotalRooms(10);
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(testRoom));
 
-    //     service.unblockRoomDates(roomId, request);
+        Booking booking1 = new Booking();
+        booking1.setCheckIn(today);
+        booking1.setCheckOut(today.plusDays(1));
+        booking1.setRoomsBooked(2);
 
-    //     assertEquals(room.getTotalRooms(), blocked1.getAvailableRooms());
-    //     assertEquals(room.getTotalRooms(), blocked2.getAvailableRooms());
-    //     verify(availabilityRepository).save(blocked1);
-    //     verify(availabilityRepository).save(blocked2);
-    // }
+        Booking booking2 = new Booking();
+        booking2.setCheckIn(today.plusDays(1));
+        booking2.setCheckOut(today.plusDays(2));
+        List<Booking> bookings = Arrays.asList(booking1, booking2);
+        when(bookingRepository.findByRoom_RoomId(roomId)).thenReturn(bookings);
+
+        when(availabilityRepository.findByRoom_RoomIdAndDate(eq(roomId), any(LocalDate.class)))
+            .thenReturn(null);
+
+        service.unblockRoomDates(roomId, request);
+
+        verify(availabilityRepository, times(3)).save(argThat(availability -> 
+            availability.getRoom().getRoomId().equals(roomId) &&
+            (availability.getDate().equals(today) || 
+             availability.getDate().equals(today.plusDays(1)) || 
+             availability.getDate().equals(today.plusDays(2)))
+        ));
+    }
 
     @Test
     void getHotelAvailabilityRatio_ShouldCalculateCorrectRatio() {

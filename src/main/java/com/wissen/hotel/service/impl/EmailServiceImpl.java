@@ -225,7 +225,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private void sendEmail(String to, String from, String subject, String text) {
+    public void sendEmail(String to, String from, String subject, String text) {
         try {
             logger.info("Sending email to: {}", to);
             SimpleMailMessage message = new SimpleMailMessage();
